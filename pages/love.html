@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<!--
+  ============================================
+  二级页面：告白屋（情话罐）
+  ============================================
+  功能：点击罐子抽取情话，自动收藏，可删除收藏
+  数据：10 条情话（可扩展）
+  ============================================
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#05051f">
+    <title>💌 告白屋 · 星河之旅</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <!-- Canvas 背景层 -->
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- 自定义光标 -->
+    <div class="cursor-glow" id="cursorGlow"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <!-- 返回首页按钮 -->
+    <a href="../index.html" class="back-btn" title="返回首页">←</a>
+
+    <!-- 顶部导航栏 -->
+    <div class="top-nav">
+        <a href="../index.html" class="nav-btn" title="星河入口">🏠</a>
+        <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
+    </div>
+
+    <!-- 场景内容：告白屋 -->
+    <div class="scene-content">
+        <div class="scene-title">告白屋</div>
+        <div class="scene-desc">抽一张情话纸条吧</div>
+
+        <div class="jar-container">
+            <!-- 情话罐（点击抽取） -->
+            <div class="jar" id="loveJar">
+                <span class="jar-inner">🫙</span>
+            </div>
+
+            <!-- 当前抽取的情话显示区 -->
+            <div id="loveNoteContainer"></div>
+
+            <!-- 收藏区 -->
+            <div class="collection-area" id="collectionArea">
+                <h4 style="color:#ffd700; margin-bottom:8px;">💛 我的收藏</h4>
+                <div id="collectedNotes"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部移动导航 -->
+    <div class="mobile-tab" id="mobileTab">
+        <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
+        <a href="meet.html"><span class="tab-icon">📖</span>初见</a>
+        <a href="memories.html"><span class="tab-icon">📷</span>回忆</a>
+        <a href="love.html" class="active-tab"><span class="tab-icon">💌</span>告白</a>
+        <a href="wish.html"><span class="tab-icon">⭐</span>心愿</a>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        /* ---------- 模块：情话数据 ---------- */
+        const loveNotes = [
+            '我喜欢你，像风走了八千里，不问归期。',
+            '遇见你之后，我的世界变得好温柔。',
+            '你是我所有温柔的来源和归宿。',
+            '我想和你一起虚度时光，从清晨到黄昏。',
+            '你的名字，是我见过最短的情诗。',
+            '世界很大，可我的眼里只有你。',
+            '我这个人超好的，你要不要试着喜欢我？',
+            '七夕快乐，我的宝贝。',
+            '有你在身边，每天都是情人节。',
+            '我想把所有的浪漫都给你。'
+        ];
+
+        /* ---------- 模块：情话抽取与收藏 ---------- */
+        let noteIndex = 0;
+        const collectedNotes = [];
+
+        document.getElementById('loveJar').addEventListener('click', () => {
+            if (noteIndex >= loveNotes.length) {
+                alert('🎉 情话已全部抽完，你是我写不完的诗');
+                return;
+            }
+            const note = loveNotes[noteIndex];
+            noteIndex++;
+
+            // 显示当前情话
+            const container = document.getElementById('loveNoteContainer');
+            container.innerHTML = `<div class="love-note">${note}</div>`;
+
+            // 自动收藏
+            collectedNotes.push(note);
+            updateCollectedNotes();
+        });
+
+        /* ---------- 模块：更新收藏列表 ---------- */
+        function updateCollectedNotes() {
+            const container = document.getElementById('collectedNotes');
+            if (collectedNotes.length === 0) {
+                container.innerHTML = '<div style="color:rgba(255,255,255,0.5);font-size:0.8rem;">还没有收藏哦，快去抽取情话吧～</div>';
+                return;
+            }
+            container.innerHTML = collectedNotes.map((note, idx) =>
+                `<div class="collected-note"><span>${note}</span><button data-idx="${idx}" style="background:none;border:none;color:#ff6b9d;cursor:pointer;">✕</button></div>`
+            ).join('');
+
+            // 绑定删除事件
+            container.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.idx);
+                    collectedNotes.splice(idx, 1);
+                    updateCollectedNotes();
+                });
+            });
+        }
+
+        // 初始化收藏列表
+        updateCollectedNotes();
+    })();
+    </script>
+</body>
+</html>

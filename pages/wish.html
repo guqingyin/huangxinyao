@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!--
+  ============================================
+  二级页面：心愿星（心愿列表）
+  ============================================
+  功能：点击星星点亮/熄灭心愿，可添加新愿望
+  数据：5 条预设心愿（可动态添加）
+  ============================================
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#05051f">
+    <title>⭐ 心愿星 · 星河之旅</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <!-- Canvas 背景层 -->
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- 自定义光标 -->
+    <div class="cursor-glow" id="cursorGlow"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <!-- 返回首页按钮 -->
+    <a href="../index.html" class="back-btn" title="返回首页">←</a>
+
+    <!-- 顶部导航栏 -->
+    <div class="top-nav">
+        <a href="../index.html" class="nav-btn" title="星河入口">🏠</a>
+        <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
+    </div>
+
+    <!-- 场景内容：心愿星 -->
+    <div class="scene-content">
+        <div class="scene-title">心愿星</div>
+        <div class="scene-desc">点击星星点亮心愿 · 添加新愿望</div>
+
+        <!-- 心愿列表 -->
+        <div class="wish-list" id="wishList">
+            <div class="wish-item" data-wish="一起看一次日出">
+                <span class="wish-star">☆</span>
+                <span class="wish-text">一起看一次日出</span>
+            </div>
+            <div class="wish-item" data-wish="一起养一只猫">
+                <span class="wish-star">☆</span>
+                <span class="wish-text">一起养一只猫</span>
+            </div>
+            <div class="wish-item" data-wish="去看一次海">
+                <span class="wish-star">☆</span>
+                <span class="wish-text">去看一次海</span>
+            </div>
+            <div class="wish-item" data-wish="去迪士尼看烟花">
+                <span class="wish-star">☆</span>
+                <span class="wish-text">去迪士尼看烟花</span>
+            </div>
+            <div class="wish-item" data-wish="一起过下个七夕">
+                <span class="wish-star">☆</span>
+                <span class="wish-text">一起过下个七夕</span>
+            </div>
+        </div>
+
+        <!-- 添加新愿望表单 -->
+        <div class="add-wish-form">
+            <input type="text" class="add-wish-input" id="newWishInput" placeholder="许下新的愿望..." maxlength="30">
+            <button class="add-wish-btn" id="addWishBtn">许愿</button>
+        </div>
+    </div>
+
+    <!-- 底部移动导航 -->
+    <div class="mobile-tab" id="mobileTab">
+        <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
+        <a href="meet.html"><span class="tab-icon">📖</span>初见</a>
+        <a href="memories.html"><span class="tab-icon">📷</span>回忆</a>
+        <a href="love.html"><span class="tab-icon">💌</span>告白</a>
+        <a href="wish.html" class="active-tab"><span class="tab-icon">⭐</span>心愿</a>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        /* ---------- 模块：心愿星星点亮/熄灭 ---------- */
+        function bindWishClick(item) {
+            item.addEventListener('click', () => {
+                const star = item.querySelector('.wish-star');
+                if (star.classList.contains('lit')) {
+                    star.classList.remove('lit');
+                    star.textContent = '☆';
+                } else {
+                    star.classList.add('lit');
+                    star.textContent = '★';
+                }
+            });
+        }
+
+        // 为所有预设心愿绑定点击事件
+        document.querySelectorAll('.wish-item').forEach(bindWishClick);
+
+        /* ---------- 模块：添加新愿望 ---------- */
+        document.getElementById('addWishBtn').addEventListener('click', () => {
+            const input = document.getElementById('newWishInput');
+            const text = input.value.trim();
+            if (text) {
+                const wishList = document.getElementById('wishList');
+                const newItem = document.createElement('div');
+                newItem.className = 'wish-item';
+                newItem.dataset.wish = text;
+                newItem.innerHTML = `<span class="wish-star">☆</span><span class="wish-text">${text}</span>`;
+                wishList.appendChild(newItem);
+                input.value = '';
+                bindWishClick(newItem);
+            }
+        });
+
+        /* ---------- 模块：回车提交愿望 ---------- */
+        document.getElementById('newWishInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('addWishBtn').click();
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!--
+  ============================================
+  星河之旅 · 七夕特典 — 一级首页
+  ============================================
+  功能：星河入口，展示星空导航，链接到各二级页面
+  二级页面：
+    - pages/meet.html      初见馆（时间线）
+    - pages/memories.html   回忆册（照片墙）
+    - pages/love.html       告白屋（情话罐）
+    - pages/wish.html       心愿星（心愿列表）
+    - pages/secret.html     秘密匣（彩蛋）
+  ============================================
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#05051f">
+    <title>💖 星河之旅 · 七夕特典 💖</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Canvas 背景层 -->
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- 自定义光标（仅桌面端显示） -->
+    <div class="cursor-glow" id="cursorGlow"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <!-- 顶部导航栏 -->
+    <div class="top-nav">
+        <a href="index.html" class="nav-btn" title="星河入口">🏠</a>
+        <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
+    </div>
+
+    <!-- 首页：星河入口 -->
+    <div class="home-scene" id="home-scene">
+        <div class="home-title">七 夕 快 乐</div>
+        <div class="home-subtitle">✨ 纤云弄巧 · 飞星传恨 ✨</div>
+
+        <!-- 星空导航：点击星星跳转到各二级页面 -->
+        <div class="star-nav">
+            <div class="moon" id="moon">
+                <span class="moon-text">🌙</span>
+            </div>
+            <!-- 星星导航 → 二级页面 -->
+            <a href="pages/meet.html" class="star-item star-1">
+                ✨
+                <span class="star-label">初见馆</span>
+            </a>
+            <a href="pages/memories.html" class="star-item star-2">
+                ✨
+                <span class="star-label">回忆册</span>
+            </a>
+            <a href="pages/love.html" class="star-item star-3">
+                ✨
+                <span class="star-label">告白屋</span>
+            </a>
+            <a href="pages/wish.html" class="star-item star-4">
+                ✨
+                <span class="star-label">心愿星</span>
+            </a>
+            <a href="pages/secret.html" class="star-item star-5">
+                ✨
+                <span class="star-label">秘密匣</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 底部移动导航（移动端显示） -->
+    <div class="mobile-tab" id="mobileTab">
+        <a href="index.html" class="active-tab"><span class="tab-icon">🏠</span>首页</a>
+        <a href="pages/meet.html"><span class="tab-icon">📖</span>初见</a>
+        <a href="pages/memories.html"><span class="tab-icon">📷</span>回忆</a>
+        <a href="pages/love.html"><span class="tab-icon">💌</span>告白</a>
+        <a href="pages/wish.html"><span class="tab-icon">⭐</span>心愿</a>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        /* ---------- 模块：首页交互逻辑 ---------- */
+
+        // 月亮点击 5 次 → 跳转秘密匣（隐藏彩蛋）
+        let moonClickCount = 0;
+        const moon = document.getElementById('moon');
+        if (moon) {
+            moon.addEventListener('click', () => {
+                moonClickCount++;
+                if (moonClickCount >= 5) {
+                    moonClickCount = 0;
+                    window.location.href = 'pages/secret.html';
+                }
+            });
+        }
+    })();
+    </script>
+</body>
+</html>
