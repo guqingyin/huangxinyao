@@ -1,5 +1,5 @@
 /* ============================================
-   星河之旅 · 七夕特典 — 公共样式表
+   星河之旅 · 七夕特典 — 公共样式表 (v9)
    适用于所有一级/二级页面
    ============================================ */
 
@@ -582,6 +582,36 @@ canvas {
     font-size: 0.9rem;
     text-align: left;
     word-break: break-word;
+}
+.wish-from {
+    color: rgba(255, 215, 0, 0.7);
+    font-size: 0.65rem;
+    font-style: italic;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+.wish-delete {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 80, 80, 0.15);
+    color: rgba(255, 120, 120, 0.85);
+    border: 1px solid rgba(255, 80, 80, 0.3);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: 6px;
+    flex-shrink: 0;
+    padding: 0;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wish-delete:hover {
+    background: rgba(255, 80, 80, 0.35);
+    color: #fff;
+    transform: scale(1.1);
 }
 .add-wish-form {
     display: flex;
