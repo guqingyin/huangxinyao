@@ -64,23 +64,11 @@
         <a href="love.html"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html" class="active-tab"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-    <script src="../js/main.js?v4"></script>
-    <script src="../js/online.js?v4"></script>
+    <script src="../js/main.js?v5"></script>
+    <script src="../js/online.js?v5"></script>
     <script>
     (function() {
         'use strict';
-
-        const room = Online.getRoomId();
-        if (room) Online.joinRoom(room, null);
-
-        document.querySelectorAll('a[href]').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href && href.endsWith('.html') && !href.includes('?')) {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const r = Online.getRoomId();
-                    window.location.href = href + (r ? '?room=' + r : '');
-                });
             }
         });
 

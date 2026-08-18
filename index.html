@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>💖 星河之旅 · 七夕特典 💖</title>
-    <link rel="stylesheet" href="css/style.css?v4">
+    <link rel="stylesheet" href="css/style.css?v5">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -41,27 +41,6 @@
             <a href="pages/secret.html" class="star-item star-5" data-page="secret">✨<span class="star-label">秘密匣</span></a>
         </div>
 
-        <!-- 联机入口 -->
-        <div class="room-panel" id="roomPanel">
-            <div class="room-panel-title">💕 双人联机</div>
-            <div class="room-panel-desc">一起探索星河</div>
-            <div class="room-buttons">
-                <button class="room-btn create-btn" id="createRoomBtn">创建房间</button>
-                <button class="room-btn join-btn" id="joinRoomBtn">加入房间</button>
-            </div>
-            <div class="join-form" id="joinForm" style="display:none;">
-                <input type="text" class="room-input" id="roomInput" placeholder="房间号" maxlength="20">
-                <input type="password" class="room-input" id="passcodeInput" placeholder="邀请码" maxlength="4">
-                <button class="room-btn join-confirm-btn" id="joinConfirmBtn">进入</button>
-            </div>
-            <div class="room-info" id="roomInfo" style="display:none;">
-                <div class="room-info-row"><span class="room-info-label">房间号</span><span class="room-info-value" id="roomInfoId">-</span></div>
-                <div class="room-info-row"><span class="room-info-label">邀请码</span><span class="room-info-value" id="roomInfoPasscode">-</span></div>
-                <div class="room-info-row"><span class="room-info-label">链接</span><span class="room-info-value room-info-link" id="roomInfoLink">点击复制</span></div>
-                <div class="room-info-tip">把房间号和邀请码发给TA吧～</div>
-            </div>
-        </div>
-
         <!-- 留言板 -->
         <div class="message-board" id="messageBoard">
             <div class="message-board-title">📝 留言板</div>
@@ -81,14 +60,13 @@
         <a href="pages/wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
 
-    <script src="js/main.js?v4"></script>
-    <script src="js/online.js?v4"></script>
+    <script src="js/main.js?v5"></script>
+    <script src="js/online.js?v5"></script>
     <script>
     (function() {
         'use strict';
 
         /* ---------- 模块：倒计时天数 ---------- */
-        // 从 localStorage 读取纪念日，默认 2026-08-18
         function getAnniversary() {
             return localStorage.getItem('anniversary') || '2026-08-18';
         }
@@ -113,7 +91,6 @@
                 localStorage.setItem('anniversary', val);
                 document.getElementById('countdownDays').textContent = calcDays();
                 anniversaryInput.style.display = 'none';
-                // 同步给对方
                 Online.send({ type: 'anniversary_set', date: val, timestamp: Date.now() });
             }
         });
@@ -137,10 +114,9 @@
             });
         }
 
-        /* ---------- 模块：导航（携带 room 参数） ---------- */
+        /* ---------- 模块：导航（永久联机无房间参数） ---------- */
         function navigateTo(page) {
-            const room = Online.getRoomId();
-            const url = (page === 'index' ? 'index.html' : 'pages/' + page + '.html') + (room ? '?room=' + room : '');
+            const url = (page === 'index' ? 'index.html' : 'pages/' + page + '.html');
             window.location.href = url;
         }
         document.querySelectorAll('.star-item').forEach(star => {
@@ -150,63 +126,9 @@
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const href = link.getAttribute('href');
-                const room = Online.getRoomId();
-                window.location.href = href + (room ? '?room=' + room : '');
+                window.location.href = href;
             });
         });
-
-        /* ---------- 模块：创建房间 ---------- */
-        document.getElementById('createRoomBtn').addEventListener('click', async () => {
-            const roomId = Online.generateRoomId();
-            const passcode = Online.generatePasscode();
-            document.getElementById('roomInfoId').textContent = roomId;
-            document.getElementById('roomInfoPasscode').textContent = passcode;
-            const link = window.location.origin + window.location.pathname + '?room=' + roomId;
-            document.getElementById('roomInfoLink').dataset.link = link;
-            document.getElementById('roomInfoLink').textContent = '点击复制';
-            document.getElementById('roomInfo').style.display = 'block';
-            document.getElementById('joinForm').style.display = 'none';
-            await Online.createRoom(roomId, passcode);
-            window.history.replaceState({}, '', window.location.pathname + '?room=' + roomId);
-            document.getElementById('roomInfoLink').addEventListener('click', () => {
-                const text = document.getElementById('roomInfoLink').dataset.link;
-                navigator.clipboard.writeText(text).then(() => {
-                    document.getElementById('roomInfoLink').textContent = '已复制!';
-                    setTimeout(() => { document.getElementById('roomInfoLink').textContent = '点击复制'; }, 2000);
-                });
-            });
-        });
-
-        /* ---------- 模块：加入房间 ---------- */
-        document.getElementById('joinRoomBtn').addEventListener('click', () => {
-            document.getElementById('joinForm').style.display = 'flex';
-            document.getElementById('roomInfo').style.display = 'none';
-            document.getElementById('roomInput').focus();
-        });
-        document.getElementById('joinConfirmBtn').addEventListener('click', async () => {
-            const roomId = document.getElementById('roomInput').value.trim();
-            const passcode = document.getElementById('passcodeInput').value.trim();
-            if (roomId && passcode) {
-                document.getElementById('joinConfirmBtn').textContent = '连接中...';
-                await Online.joinRoom(roomId, passcode);
-                window.history.replaceState({}, '', window.location.pathname + '?room=' + roomId);
-                document.getElementById('joinForm').style.display = 'none';
-                document.getElementById('joinConfirmBtn').textContent = '进入';
-            } else { alert('请输入房间号和邀请码'); }
-        });
-        document.getElementById('passcodeInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('joinConfirmBtn').click();
-        });
-
-        /* ---------- 模块：URL 有 room 参数时 ---------- */
-        const existingRoom = Online.getRoomId();
-        if (existingRoom) {
-            document.getElementById('createRoomBtn').style.display = 'none';
-            document.getElementById('joinRoomBtn').style.display = 'none';
-            document.getElementById('joinForm').style.display = 'flex';
-            document.getElementById('roomInput').value = existingRoom;
-            document.getElementById('passcodeInput').focus();
-        }
 
         /* ---------- 模块：留言板 ---------- */
         const messages = JSON.parse(localStorage.getItem('messages') || '[]');
@@ -229,7 +151,6 @@
             if (messages.length > 50) messages.shift();
             localStorage.setItem('messages', JSON.stringify(messages));
             renderMessages();
-            // 联机同步
             Online.send({ type: 'message_board', text: text, time: msg.time, timestamp: Date.now() });
         }
         document.getElementById('messageSendBtn').addEventListener('click', () => {
@@ -249,12 +170,17 @@
                 const text = indicator.querySelector('.online-text');
                 if (text && data.page) {
                     const pageMap = { 'index':'星河入口','meet':'初见馆','memories':'回忆册','love':'告白屋','wish':'心愿星','secret':'秘密匣' };
-                    text.textContent = 'TA在 ' + (pageMap[data.page] || data.page);
+                    if (Online.isConnected()) {
+                        const myIdentity = Online.getIdentity();
+                        const myName = myIdentity === 'yaya' ? '芽芽' : (myIdentity === 'yaoyao' ? '瑶瑶' : '');
+                        const otherName = Online.getOtherName();
+                        text.textContent = (myName || '我') + ' · 已连接 ' + otherName;
+                    }
                 }
             }
         });
         Online.onMessage('sys', (data) => {
-            if (data.action === 'user_join') {
+            if (data.action === 'identify' || data.action === 'presence') {
                 // 对方加入，发送当前留言板
                 Online.send({ type: 'message_board_sync', messages: messages, timestamp: Date.now() });
             }
@@ -276,8 +202,7 @@
 
         /* ---------- 模块：烟花特效（点击空白处） ---------- */
         document.addEventListener('click', (e) => {
-            // 排除按钮、链接、输入框
-            if (e.target.closest('button, a, input, textarea, .jar, .photo-card, .wish-item, .timeline-item, .moon')) return;
+            if (e.target.closest('button, a, input, textarea, .jar, .photo-card, .wish-item, .timeline-item, .moon, .star-item, #onlineIndicator')) return;
             spawnFirework(e.clientX, e.clientY);
         });
         function spawnFirework(x, y) {
