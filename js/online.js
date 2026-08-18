@@ -1,7 +1,10 @@
 /* ============================================
-   星河之旅 · 七夕特典 — 联机客户端 v2
+   星河之旅 · 七夕特典 — 联机客户端 v3
    双通道：BroadcastChannel(同设备) + PeerJS(跨设备)
-   修复：页面跳转不断连、消息可靠投递
+   修复 v3：
+   - Host 收到任何通道的 auth 都验证并回确认（用对应通道回信）
+   - Guest 收到任何通道的 user_join 都视为已连接
+   - 双向状态实时同步（任何消息都刷新对端活跃时间戳）
    ============================================ */
 
 (function() {
@@ -33,11 +36,13 @@
     let conn = null;       // Guest→Host 的 DataConnection
     let incomingConn = null; // Host←Guest 的 DataConnection
     let isConnected = false;
+    let peerOpen = false;  // PeerJS 是否已 open
     let roomId = null;
     let passcode = null;
     let isHost = false;
-    let channel = null;   // BroadcastChannel
-    let peerReady = false; // PeerJS 是否已 open
+    let channel = null;    // BroadcastChannel
+    let lastPeerActivity = 0; // 对端最后活跃时间
+    let peerPresenceTimer = null;
 
     // 消息处理器
     const messageHandlers = {};
@@ -46,27 +51,89 @@
         messageHandlers[type].push(handler);
     }
 
-    function handleMessage(data) {
+    // 通用回信：能走 PeerJS 走 PeerJS，否则走 broadcast
+    function replyToSender(payload, viaBroadcast) {
+        const text = JSON.stringify(payload);
+        if (viaBroadcast) {
+            if (channel) { try { channel.postMessage(payload); } catch {} }
+        } else {
+            const target = (isHost ? incomingConn : conn);
+            if (target && target.open) {
+                try { target.send(text); } catch {}
+            }
+            // 兜底也走 broadcast
+            if (channel) { try { channel.postMessage(payload); } catch {} }
+        }
+    }
+
+    function markPeerActive() {
+        lastPeerActivity = Date.now();
+    }
+
+    function handleMessage(data, viaBroadcast) {
+        if (!data || !data.type) return;
+        // 通过任一通道收到对端消息都视为活跃
+        markPeerActive();
         // 系统消息
         if (data.type === 'sys') {
             if (data.action === 'user_join') {
-                updateOnlineIndicator(2);
-                showFloatTip('💕 TA 来了');
+                if (!isConnected) {
+                    isConnected = true;
+                    updateOnlineIndicator(2);
+                    if (isHost) showFloatTip('💕 TA 来了');
+                    else showFloatTip('💕 已连接到房间');
+                }
+                return;
+            }
+            if (data.action === 'user_leave') {
+                if (isConnected) {
+                    isConnected = false;
+                    updateOnlineIndicator(1);
+                    showFloatTip('👋 TA 离开了');
+                }
+                return;
+            }
+            if (data.action === 'pong') {
+                if (!isConnected) {
+                    isConnected = true;
+                    updateOnlineIndicator(2);
+                }
+                return;
+            }
+            if (data.action === 'ping') {
+                replyToSender({ type: 'sys', action: 'pong' }, viaBroadcast);
+                if (!isConnected) {
+                    isConnected = true;
+                    updateOnlineIndicator(2);
+                }
+                return;
             }
             return;
         }
         // 认证
-        if (data.type === 'auth' && isHost) {
-            if (data.passcode !== passcode) {
-                showFloatTip('⚠️ 邀请码错误');
-                if (incomingConn) { try { incomingConn.close(); } catch {} }
-                return;
+        if (data.type === 'auth') {
+            if (isHost) {
+                if (data.passcode !== passcode) {
+                    showFloatTip('⚠️ 邀请码错误');
+                    return;
+                }
+                // 验证通过
+                if (!isConnected) {
+                    isConnected = true;
+                    updateOnlineIndicator(2);
+                    showFloatTip('💕 TA 来了');
+                }
+                // 回信（用对应通道）
+                replyToSender({ type: 'sys', action: 'user_join' }, viaBroadcast);
+                // 主动通知对方我现在所在页面
+                replyToSender({ type: 'page_change', page: getPageName(), timestamp: Date.now() }, viaBroadcast);
+                // 再 ping 一次让对方也 set isConnected
+                setTimeout(() => {
+                    replyToSender({ type: 'sys', action: 'ping' }, viaBroadcast);
+                }, 300);
+            } else {
+                // Guest 收到 auth 回应（理论上不会）
             }
-            if (incomingConn && incomingConn.open) {
-                incomingConn.send(JSON.stringify({ type: 'sys', action: 'user_join' }));
-            }
-            updateOnlineIndicator(2);
-            showFloatTip('💕 TA 来了');
             return;
         }
         // 调用注册处理器
@@ -80,14 +147,14 @@
     // ====== BroadcastChannel（同设备双标签页） ======
     function initBroadcast() {
         try {
+            if (channel) return;
             channel = new BroadcastChannel('qixi-room');
             channel.onmessage = (e) => {
                 const data = e.data;
-                if (!data || !data.type) return;
-                handleMessage(data);
+                if (!data) return;
+                handleMessage(data, true);
             };
         } catch {
-            // 不支持 BroadcastChannel 的浏览器降级
             channel = null;
         }
     }
@@ -108,71 +175,74 @@
         roomId = room;
         passcode = code;
         isHost = true;
+        isConnected = false;
 
         initBroadcast();
 
-        // 先用 BroadcastChannel 通知同设备
+        // 用 BroadcastChannel 通知同设备（如果对方已经 postMessage auth 过了就太迟，
+        // 但 Host 创建后 Guest 才能 join，所以这条主要是给已经在等待的 Guest 触发）
         if (channel) {
-            channel.postMessage({ type: 'sys', action: 'host_ready', roomId: room });
+            channel.postMessage({ type: 'sys', action: 'host_ready', roomId: room, timestamp: Date.now() });
         }
 
-        try {
-            if (!window.Peer) {
-                await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
-            }
+        // 启动 PeerJS（异步，不阻塞）
+        tryPeerJSAsHost();
 
-            peer = new Peer(room, {
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.google.com:19302' }
-                    ]
-                },
-                debug: 1
-            });
+        // 启动对端活跃检测
+        startPresenceTimer();
 
-            peer.on('open', () => {
-                peerReady = true;
-                updateOnlineIndicator(1);
-            });
+        return true;
+    }
 
-            peer.on('connection', (connection) => {
-                incomingConn = connection;
-                connection.on('open', () => {
-                    updateOnlineIndicator(2);
-                });
-                connection.on('data', (data) => {
-                    try {
-                        if (typeof data === 'string') {
-                            handleMessage(JSON.parse(data));
-                        }
-                    } catch {}
-                });
-                connection.on('close', () => {
-                    updateOnlineIndicator(1);
-                    showFloatTip('👋 TA 离开了');
-                });
-                connection.on('error', () => {});
-            });
-
-            peer.on('error', (err) => {
-                console.error('[online] Peer error:', err.type, err.message);
-                if (err.type === 'unavailable-id') {
-                    showFloatTip('⚠️ 房间号被占用，请重新创建');
-                } else if (err.type === 'network' || err.type === 'server-error') {
-                    showFloatTip('⚠️ 网络不稳，跨设备联机可能受影响');
-                    // 仍然可以通过 BroadcastChannel 同设备联机
-                    peerReady = false;
+    function tryPeerJSAsHost() {
+        // 异步加载 PeerJS，不阻塞 UI
+        (async () => {
+            try {
+                if (!window.Peer) {
+                    await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
                 }
-            });
+                peer = new Peer(roomId, {
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.google.com:19302' }
+                        ]
+                    }
+                });
 
-            return true;
-        } catch (err) {
-            console.error('[online] 创建房间失败:', err);
-            // PeerJS 加载失败，仍然可以用 BroadcastChannel
-            return true;
-        }
+                peer.on('open', () => {
+                    peerOpen = true;
+                });
+
+                peer.on('connection', (connection) => {
+                    incomingConn = connection;
+                    connection.on('open', () => {
+                        // 等对方发 auth
+                    });
+                    connection.on('data', (data) => {
+                        try {
+                            if (typeof data === 'string') handleMessage(JSON.parse(data), false);
+                        } catch {}
+                    });
+                    connection.on('close', () => {
+                        if (isConnected) {
+                            isConnected = false;
+                            updateOnlineIndicator(1);
+                            showFloatTip('👋 TA 离开了');
+                        }
+                        incomingConn = null;
+                    });
+                    connection.on('error', () => {});
+                });
+
+                peer.on('error', (err) => {
+                    console.warn('[online] Peer error:', err.type);
+                });
+            } catch (err) {
+                console.warn('[online] PeerJS init failed, BroadcastChannel only:', err.message);
+            }
+        })();
     }
 
     // ====== 加入房间（Guest） ======
@@ -180,103 +250,95 @@
         roomId = room;
         passcode = code;
         isHost = false;
+        isConnected = false;
 
         initBroadcast();
 
-        // 先通过 BroadcastChannel 尝试连接同设备 Host
+        // 通过 BroadcastChannel 尝试（最关键，同设备方案）
         if (channel) {
             channel.postMessage({
                 type: 'auth',
                 passcode: code,
-                _via: 'broadcast'
-            });
-            // 通知 Host 我来了
-            channel.postMessage({
-                type: 'page_change',
-                page: getPageName(),
                 timestamp: Date.now()
             });
-        }
-
-        try {
-            if (!window.Peer) {
-                await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
-            }
-
-            peer = new Peer({
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.google.com:19302' }
-                    ]
-                },
-                debug: 1
-            });
-
-            peer.on('open', () => {
-                peerReady = true;
-                conn = peer.connect(room, { reliable: true });
-
-                conn.on('open', () => {
-                    isConnected = true;
-                    conn.send(JSON.stringify({ type: 'auth', passcode: code }));
-                    conn.send(JSON.stringify({
-                        type: 'page_change',
-                        page: getPageName(),
-                        timestamp: Date.now()
-                    }));
-                    updateOnlineIndicator(2);
-                    showFloatTip('💕 已连接到房间');
-                });
-
-                conn.on('data', (data) => {
-                    try {
-                        if (typeof data === 'string') {
-                            handleMessage(JSON.parse(data));
-                        }
-                    } catch {}
-                });
-
-                conn.on('close', () => {
-                    isConnected = false;
-                    updateOnlineIndicator(1);
-                    showFloatTip('👋 连接断开');
-                });
-
-                conn.on('error', () => {
-                    isConnected = false;
-                    updateOnlineIndicator(1);
-                });
-
-                // 超时检测：5 秒内没连上则提示
-                setTimeout(() => {
-                    if (!isConnected) {
-                        showFloatTip('⏳ 跨设备连接中...同设备可直接用');
-                        // 尝试通过 BroadcastChannel 确认
-                        if (channel) {
-                            channel.postMessage({ type: 'sys', action: 'guest_waiting' });
-                        }
-                    }
-                }, 5000);
-            });
-
-            peer.on('error', (err) => {
-                console.error('[online] Peer error:', err.type, err.message);
-                if (err.type === 'peer-unavailable') {
-                    showFloatTip('⚠️ 对方不在线或网络不通');
-                } else if (err.type === 'network' || err.type === 'server-error') {
-                    showFloatTip('⚠️ 跨设备网络受限，同设备仍可用');
-                    peerReady = false;
+            // 3秒后没收到回信则重试一次
+            setTimeout(() => {
+                if (!isConnected) {
+                    channel.postMessage({ type: 'auth', passcode: code, timestamp: Date.now() });
                 }
-            });
-
-            return true;
-        } catch (err) {
-            console.error('[online] 加入失败:', err);
-            // PeerJS 加载失败，仍可用 BroadcastChannel
-            return true;
+            }, 3000);
         }
+
+        // 同时启动 PeerJS 尝试跨设备连接
+        tryPeerJSAsGuest();
+
+        // 启动对端活跃检测
+        startPresenceTimer();
+
+        return true;
+    }
+
+    function tryPeerJSAsGuest() {
+        (async () => {
+            try {
+                if (!window.Peer) {
+                    await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
+                }
+                peer = new Peer({
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.google.com:19302' }
+                        ]
+                    }
+                });
+
+                peer.on('open', () => {
+                    peerOpen = true;
+                    conn = peer.connect(roomId, { reliable: true });
+                    conn.on('open', () => {
+                        // 发送 auth
+                        try { conn.send(JSON.stringify({ type: 'auth', passcode: passcode })); } catch {}
+                        try { conn.send(JSON.stringify({ type: 'page_change', page: getPageName(), timestamp: Date.now() })); } catch {}
+                    });
+                    conn.on('data', (data) => {
+                        try {
+                            if (typeof data === 'string') handleMessage(JSON.parse(data), false);
+                        } catch {}
+                    });
+                    conn.on('close', () => {
+                        if (isConnected) {
+                            isConnected = false;
+                            updateOnlineIndicator(1);
+                            showFloatTip('👋 连接断开');
+                        }
+                        conn = null;
+                    });
+                    conn.on('error', () => {});
+                });
+
+                peer.on('error', (err) => {
+                    console.warn('[online] Peer error:', err.type);
+                });
+            } catch (err) {
+                console.warn('[online] PeerJS init failed:', err.message);
+            }
+        })();
+    }
+
+    // ====== 对端活跃检测（任意通道收到消息都会刷新，超时则视为离开） ======
+    function startPresenceTimer() {
+        if (peerPresenceTimer) clearInterval(peerPresenceTimer);
+        peerPresenceTimer = setInterval(() => {
+            if (!isConnected) return;
+            const idle = Date.now() - lastPeerActivity;
+            if (idle > 15000) { // 15 秒无消息视为掉线
+                isConnected = false;
+                updateOnlineIndicator(1);
+                showFloatTip('👋 TA 离开了');
+            }
+        }, 5000);
     }
 
     // ====== 统一连接入口 ======
@@ -286,17 +348,14 @@
 
     // ====== 发送消息 ======
     function send(data) {
-        const payload = (typeof data === 'string') ? data : JSON.stringify(data);
-        // 优先 PeerJS
-        const target = conn || incomingConn;
+        // 通过 PeerJS
+        const target = (isHost ? incomingConn : conn);
         if (target && target.open) {
-            try { target.send(payload); } catch {}
+            try { target.send(typeof data === 'string' ? data : JSON.stringify(data)); } catch {}
         }
-        // 同时通过 BroadcastChannel（同设备双开时兜底）
+        // 同时通过 BroadcastChannel
         if (channel) {
-            try {
-                channel.postMessage(typeof data === 'string' ? data : data);
-            } catch {}
+            try { channel.postMessage(typeof data === 'string' ? JSON.parse(data) : data); } catch {}
         }
     }
 
@@ -323,10 +382,17 @@
             dot.style.boxShadow = '0 0 10px #ffd700';
             text.textContent = isHost ? '等待TA' : '连接中';
             text.style.color = '#ffd700';
+        } else {
+            dot.style.background = '#666';
+            dot.style.boxShadow = 'none';
+            text.textContent = '未连接';
+            text.style.color = 'rgba(255,255,255,0.7)';
         }
     }
 
     function createOnlineIndicator() {
+        // 避免重复创建
+        if (document.getElementById('onlineIndicator')) return;
         const indicator = document.createElement('div');
         indicator.id = 'onlineIndicator';
         indicator.style.cssText = 'position:fixed;bottom:20px;right:20px;display:flex;align-items:center;gap:6px;background:rgba(10,10,40,0.7);padding:6px 14px;border-radius:20px;z-index:50;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);font-size:0.75rem;';
@@ -339,7 +405,6 @@
 
     // ====== UI：浮动提示 ======
     function showFloatTip(text) {
-        // 避免重复提示
         const existing = document.querySelector('.float-tip');
         if (existing) existing.remove();
         const tip = document.createElement('div');
@@ -364,7 +429,11 @@
     window.Online = {
         connect, createRoom, joinRoom, send, onMessage, onStatusChange,
         notifyPageChange, getRoomId, generateRoomId, generatePasscode,
-        getPageName, isConnected: () => isConnected, isHost: () => isHost
+        getPageName,
+        isConnected: () => isConnected,
+        isHost: () => isHost,
+        getRoomId: () => roomId,
+        _debug: () => ({ isHost, isConnected, roomId, peerOpen, hasChannel: !!channel, lastPeerActivity })
     };
 
     // ====== 初始化 ======
