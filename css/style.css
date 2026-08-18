@@ -1014,6 +1014,12 @@ canvas {
     font-size: 0.65rem;
     white-space: nowrap;
 }
+.message-from {
+    color: rgba(255, 215, 0, 0.7);
+    font-size: 0.65rem;
+    white-space: nowrap;
+    font-style: italic;
+}
 .message-form {
     display: flex;
     gap: 6px;

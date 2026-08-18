@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>💖 星河之旅 · 七夕特典 💖</title>
-    <link rel="stylesheet" href="css/style.css?v5">
+    <link rel="stylesheet" href="css/style.css?v6">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -60,8 +60,8 @@
         <a href="pages/wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
 
-    <script src="js/main.js?v5"></script>
-    <script src="js/online.js?v5"></script>
+    <script src="js/main.js?v6"></script>
+    <script src="js/online.js?v6"></script>
     <script>
     (function() {
         'use strict';
@@ -138,20 +138,24 @@
                 list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:0.75rem;text-align:center;padding:10px;">还没有留言，写一句吧～</div>';
                 return;
             }
-            list.innerHTML = messages.map(m =>
-                '<div class="message-item"><span class="message-text">' + escapeHtml(m.text) + '</span><span class="message-time">' + m.time + '</span></div>'
-            ).join('');
+            list.innerHTML = messages.map(m => {
+                const fromName = m.from === 'yaya' ? '芽芽' : (m.from === 'yaoyao' ? '瑶瑶' : (m.from || ''));
+                return '<div class="message-item"><span class="message-text">' + escapeHtml(m.text) + '</span>' +
+                    (fromName ? '<span class="message-from">— ' + escapeHtml(fromName) + '</span>' : '') +
+                    '<span class="message-time">' + m.time + '</span></div>';
+            }).join('');
             list.scrollTop = list.scrollHeight;
         }
         function escapeHtml(s) { return s.replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
         function addMessage(text) {
             const now = new Date();
-            const msg = { text: text, time: (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') };
+            const sender = Online.getIdentity() || 'yaya';
+            const msg = { text: text, from: sender, time: (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') };
             messages.push(msg);
             if (messages.length > 50) messages.shift();
             localStorage.setItem('messages', JSON.stringify(messages));
             renderMessages();
-            Online.send({ type: 'message_board', text: text, time: msg.time, timestamp: Date.now() });
+            Online.send({ type: 'message_board', text: text, from: sender, time: msg.time, timestamp: Date.now() });
         }
         document.getElementById('messageSendBtn').addEventListener('click', () => {
             const input = document.getElementById('messageInput');
@@ -186,7 +190,7 @@
             }
         });
         Online.onMessage('message_board', (data) => {
-            messages.push({ text: data.text, time: data.time });
+            messages.push({ text: data.text, from: data.from || 'yaya', time: data.time });
             if (messages.length > 50) messages.shift();
             localStorage.setItem('messages', JSON.stringify(messages));
             renderMessages();
