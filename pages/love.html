@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#05051f">
     <title>💌 告白屋 · 星河之旅</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v4">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -22,6 +22,14 @@
     <div class="scene-content">
         <div class="scene-title">告白屋</div>
         <div class="scene-desc">抽一张情话纸条吧</div>
+
+        <!-- 每日情话卡片 -->
+        <div class="daily-love-card" id="dailyLoveCard">
+            <div class="daily-love-label">📅 今日情话</div>
+            <div class="daily-love-text" id="dailyLoveText">...</div>
+            <div class="daily-love-date" id="dailyLoveDate"></div>
+        </div>
+
         <div class="jar-container">
             <div class="jar" id="loveJar"><span class="jar-inner">🫙</span></div>
             <div id="loveNoteContainer"></div>
@@ -46,16 +54,14 @@
         <a href="love.html" class="active-tab"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-    <script src="../js/main.js?v3"></script>
-    <script src="../js/online.js?v3"></script>
+    <script src="../js/main.js?v4"></script>
+    <script src="../js/online.js?v4"></script>
     <script>
     (function() {
         'use strict';
 
         const room = Online.getRoomId();
-        if (room) {
-            Online.joinRoom(room, null);
-        }
+        if (room) Online.joinRoom(room, null);
 
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
@@ -68,7 +74,8 @@
             }
         });
 
-        const loveNotes = [
+        /* ---------- 模块：每日情话（30条，按日期轮换） ---------- */
+        const dailyLoveNotes = [
             '我喜欢你，像风走了八千里，不问归期。',
             '遇见你之后，我的世界变得好温柔。',
             '你是我所有温柔的来源和归宿。',
@@ -78,24 +85,53 @@
             '我这个人超好的，你要不要试着喜欢我？',
             '七夕快乐，我的宝贝。',
             '有你在身边，每天都是情人节。',
-            '我想把所有的浪漫都给你。'
+            '我想把所有的浪漫都给你。',
+            '你是我的星河大海，是我心之所向。',
+            '喜欢你这件事，我从来没想过要停。',
+            '如果一定要给这份爱加个期限，那是一万年。',
+            '你笑起来真好看，像月牙弯弯。',
+            '我贪恋的人间烟火，不偏不倚，恰好是你。',
+            '你是我最想留住的幸运。',
+            '我想和你走过春夏秋冬，看遍世间风景。',
+            '每次想到你，嘴角都会不自觉上扬。',
+            '你是我翻山越岭也想见一面的人。',
+            '世界那么大，遇见你真好。',
+            '你是我藏在口袋里的星星，走到哪里都发光。',
+            '我喜欢你，没有技巧，真诚且野蛮。',
+            '想和你一起数星星，数到眼睛都闭上。',
+            '你是我的，独一无二的小星球。',
+            '我想做你枕边书、意中人、还有那盏怀中月。',
+            '和你在一起的每一秒，都是心动的声音。',
+            '你是我重复读了千百遍，依然心动的故事。',
+            '如果爱有颜色，那一定是你眼中的星光。',
+            '我想把春天的花、夏天的风、秋天的月、冬天的雪都打包送给你。',
+            '你是我这一生，最想写好的故事。'
         ];
 
-        let noteIndex = 0;
-        const collectedNotes = [];
+        function getDailyNote() {
+            const now = new Date();
+            const start = new Date('2026-08-18');
+            const dayDiff = Math.floor((now - start) / 86400000);
+            const idx = ((dayDiff % dailyLoveNotes.length) + dailyLoveNotes.length) % dailyLoveNotes.length;
+            return { text: dailyLoveNotes[idx], idx: idx, day: dayDiff };
+        }
 
-        document.getElementById('loveJar').addEventListener('click', () => {
-            if (noteIndex >= loveNotes.length) {
-                alert('🎉 情话已全部抽完，你是我写不完的诗');
-                return;
-            }
-            const note = loveNotes[noteIndex];
-            noteIndex++;
-            document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note">' + note + '</div>';
-            collectedNotes.push(note);
-            updateCollectedNotes();
-            Online.send({ type: 'love_note', action: 'add', note: note, timestamp: Date.now() });
-        });
+        function renderDailyLove() {
+            const d = getDailyNote();
+            document.getElementById('dailyLoveText').textContent = d.text;
+            const now = new Date();
+            const dateStr = (now.getMonth() + 1) + '月' + now.getDate() + '日 · 第' + (d.day + 1) + '天';
+            document.getElementById('dailyLoveDate').textContent = dateStr;
+        }
+        renderDailyLove();
+
+        /* ---------- 模块：情话罐子（随机抽取） ---------- */
+        const loveNotes = dailyLoveNotes.slice(0, 15); // 前15条用于罐子抽取
+        let noteIndex = 0;
+        const collectedNotes = JSON.parse(localStorage.getItem('loveNotes') || '[]');
+        function saveCollected() { localStorage.setItem('loveNotes', JSON.stringify(collectedNotes)); }
+
+        function escapeHtml(s) { return s.replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
         function updateCollectedNotes() {
             const container = document.getElementById('collectedNotes');
@@ -104,20 +140,34 @@
                 return;
             }
             container.innerHTML = collectedNotes.map((note, idx) =>
-                '<div class="collected-note"><span>' + note + '</span><button data-idx="' + idx + '" style="background:none;border:none;color:#ff6b9d;cursor:pointer;">✕</button></div>'
+                '<div class="collected-note"><span>' + escapeHtml(note) + '</span><button data-idx="' + idx + '" style="background:none;border:none;color:#ff6b9d;cursor:pointer;font-size:0.9rem;">✕</button></div>'
             ).join('');
             container.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.dataset.idx);
                     const note = collectedNotes[idx];
                     collectedNotes.splice(idx, 1);
-                    updateCollectedNotes();
+                    saveCollected(); updateCollectedNotes();
                     Online.send({ type: 'love_note', action: 'remove', note: note, timestamp: Date.now() });
                 });
             });
         }
         updateCollectedNotes();
 
+        document.getElementById('loveJar').addEventListener('click', () => {
+            const available = loveNotes.filter(n => !collectedNotes.includes(n));
+            if (available.length === 0) {
+                showFloatTip('🎉 情话已全部抽完，你是我写不完的诗');
+                return;
+            }
+            const note = available[Math.floor(Math.random() * available.length)];
+            document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note">' + note + '</div>';
+            collectedNotes.push(note);
+            saveCollected(); updateCollectedNotes();
+            Online.send({ type: 'love_note', action: 'add', note: note, timestamp: Date.now() });
+        });
+
+        /* ---------- 模块：实时打字 ---------- */
         const loveInput = document.getElementById('loveInput');
         let typingTimer = null;
         loveInput.addEventListener('input', () => {
@@ -127,35 +177,30 @@
             typingTimer = setTimeout(() => {
                 if (text.trim()) {
                     collectedNotes.push(text.trim());
-                    updateCollectedNotes();
+                    saveCollected(); updateCollectedNotes();
                     loveInput.value = '';
                     Online.send({ type: 'typing', text: '', timestamp: Date.now() });
+                    Online.send({ type: 'love_note', action: 'add', note: text.trim(), timestamp: Date.now() });
                 }
             }, 2000);
         });
 
+        /* ---------- 模块：联机消息 ---------- */
         Online.onMessage('typing', (data) => {
             const typingEl = document.getElementById('partnerTyping');
             const textEl = document.getElementById('partnerTypingText');
-            if (data.text) {
-                typingEl.style.display = 'flex';
-                textEl.textContent = data.text;
-            } else {
-                typingEl.style.display = 'none';
-            }
+            if (data.text) { typingEl.style.display = 'flex'; textEl.textContent = data.text; }
+            else { typingEl.style.display = 'none'; }
         });
-
         Online.onMessage('love_note', (data) => {
             if (data.action === 'add' && data.note) {
-                document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note" style="border-color:#ff6b9d;">' + data.note + '</div>';
-                collectedNotes.push(data.note);
-                updateCollectedNotes();
+                document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note" style="border-color:#ff6b9d;">' + escapeHtml(data.note) + '</div>';
+                if (!collectedNotes.includes(data.note)) { collectedNotes.push(data.note); saveCollected(); updateCollectedNotes(); }
             } else if (data.action === 'remove' && data.note) {
                 const idx = collectedNotes.indexOf(data.note);
-                if (idx > -1) { collectedNotes.splice(idx, 1); updateCollectedNotes(); }
+                if (idx > -1) { collectedNotes.splice(idx, 1); saveCollected(); updateCollectedNotes(); }
             }
         });
-
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
             if (indicator) {
@@ -163,6 +208,17 @@
                 if (text) text.textContent = 'TA在 ' + data.page;
             }
         });
+
+        function showFloatTip(text) {
+            const existing = document.querySelector('.float-tip');
+            if (existing) existing.remove();
+            const tip = document.createElement('div');
+            tip.className = 'float-tip';
+            tip.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(10,10,40,0.9);color:#fff;padding:8px 20px;border-radius:20px;font-size:0.85rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);white-space:nowrap;';
+            tip.textContent = text;
+            document.body.appendChild(tip);
+            setTimeout(() => { tip.style.transition = 'opacity 0.5s'; tip.style.opacity = '0'; setTimeout(() => tip.remove(), 500); }, 3000);
+        }
     })();
     </script>
 </body>

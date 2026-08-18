@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>💖 星河之旅 · 七夕特典 💖</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v4">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -28,6 +28,8 @@
             <div class="countdown-label">💖 在一起</div>
             <div class="countdown-days" id="countdownDays">—</div>
             <div class="countdown-unit">天</div>
+            <div class="countdown-edit" id="countdownEdit" title="设置纪念日">⚙️</div>
+            <input type="date" id="anniversaryInput" style="display:none;position:absolute;bottom:5px;left:50%;transform:translateX(-50%);background:rgba(10,10,40,0.9);color:#ffd700;border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:4px;font-size:0.75rem;z-index:10;">
         </div>
 
         <div class="star-nav">
@@ -79,8 +81,8 @@
         <a href="pages/wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
 
-    <script src="js/main.js?v3"></script>
-    <script src="js/online.js?v3"></script>
+    <script src="js/main.js?v4"></script>
+    <script src="js/online.js?v4"></script>
     <script>
     (function() {
         'use strict';
@@ -97,6 +99,30 @@
             return diff >= 0 ? diff : 0;
         }
         document.getElementById('countdownDays').textContent = calcDays();
+
+        /* ---------- 模块：纪念日设置 ---------- */
+        const anniversaryInput = document.getElementById('anniversaryInput');
+        const countdownEdit = document.getElementById('countdownEdit');
+        anniversaryInput.value = getAnniversary();
+        countdownEdit.addEventListener('click', () => {
+            anniversaryInput.style.display = anniversaryInput.style.display === 'none' ? 'block' : 'none';
+        });
+        anniversaryInput.addEventListener('change', () => {
+            const val = anniversaryInput.value;
+            if (val) {
+                localStorage.setItem('anniversary', val);
+                document.getElementById('countdownDays').textContent = calcDays();
+                anniversaryInput.style.display = 'none';
+                // 同步给对方
+                Online.send({ type: 'anniversary_set', date: val, timestamp: Date.now() });
+            }
+        });
+        Online.onMessage('anniversary_set', (data) => {
+            if (data.date) {
+                localStorage.setItem('anniversary', data.date);
+                document.getElementById('countdownDays').textContent = calcDays();
+            }
+        });
 
         /* ---------- 模块：月亮彩蛋 ---------- */
         let moonClickCount = 0;

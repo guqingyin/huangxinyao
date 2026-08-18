@@ -1113,3 +1113,125 @@ canvas {
     .timeline-add { flex-direction: column; }
     .timeline-add-input, .timeline-add-date { width: 100%; }
 }
+
+/* ---------- 模块：每日情话卡片 ---------- */
+.daily-love-card {
+    background: linear-gradient(135deg, rgba(255,107,157,0.15), rgba(255,215,0,0.1));
+    border: 1px solid rgba(255,107,157,0.3);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin: 16px auto;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.daily-love-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255,215,0,0.05) 0%, transparent 50%);
+    animation: cardGlow 4s ease-in-out infinite;
+}
+@keyframes cardGlow {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(180deg); }
+}
+.daily-love-label {
+    font-size: 0.75rem;
+    color: rgba(255,215,0,0.8);
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+}
+.daily-love-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.95);
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+}
+.daily-love-date {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.4);
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- 模块：漂流瓶 ---------- */
+.drift-bottle-section {
+    margin: 24px auto;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(196,77,255,0.08));
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 16px;
+    max-width: 400px;
+    text-align: center;
+}
+.drift-bottle-title {
+    font-size: 1.1rem;
+    color: #00e5ff;
+    margin-bottom: 4px;
+}
+.drift-bottle-desc {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 12px;
+}
+.drift-bottle-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+.bottle-btn {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(10,10,40,0.6);
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+}
+.bottle-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.4);
+}
+.bottle-result {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: rgba(255,255,255,0.9);
+    background: rgba(10,10,40,0.6);
+    border: 1px solid rgba(255,215,0,0.2);
+}
+.bottle-result.bottle-throw { border-color: rgba(0,229,255,0.3); }
+.bottle-result.bottle-fish { border-color: rgba(255,107,157,0.3); }
+.bottle-result.bottle-receive { border-color: rgba(255,215,0,0.4); animation: bottleShake 0.5s ease; }
+.bottle-result.bottle-fished { border-color: rgba(255,107,157,0.4); }
+.bottle-result.bottle-empty { color: rgba(255,255,255,0.4); }
+@keyframes bottleShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
+/* ---------- 模块：纪念日设置 ---------- */
+.countdown-edit {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+    z-index: 5;
+}
+.countdown-edit:hover {
+    opacity: 1;
+}

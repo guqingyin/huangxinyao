@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#05051f">
     <title>⭐ 心愿星 · 星河之旅</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v4">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -22,6 +22,8 @@
     <div class="scene-content">
         <div class="scene-title">心愿星</div>
         <div class="scene-desc">点击星星点亮心愿 · 添加新愿望</div>
+
+        <!-- 心愿列表 -->
         <div class="wish-list" id="wishList">
             <div class="wish-item" data-wish="一起看一次日出" data-lit="false">
                 <span class="wish-star">☆</span><span class="wish-text">一起看一次日出</span>
@@ -43,6 +45,17 @@
             <input type="text" class="add-wish-input" id="newWishInput" placeholder="许下新的愿望..." maxlength="30">
             <button class="add-wish-btn" id="addWishBtn">许愿</button>
         </div>
+
+        <!-- 漂流瓶区域 -->
+        <div class="drift-bottle-section">
+            <div class="drift-bottle-title">🌊 星河漂流瓶</div>
+            <div class="drift-bottle-desc">把心愿扔进星河，让TA捞到</div>
+            <div class="drift-bottle-actions">
+                <button class="bottle-btn throw-btn" id="throwBottleBtn">🏷️ 扔一个</button>
+                <button class="bottle-btn fish-btn" id="fishBottleBtn">🎣 捞一个</button>
+            </div>
+            <div class="bottle-result" id="bottleResult" style="display:none;"></div>
+        </div>
     </div>
     <div class="mobile-tab" id="mobileTab">
         <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
@@ -51,16 +64,14 @@
         <a href="love.html"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html" class="active-tab"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-    <script src="../js/main.js?v3"></script>
-    <script src="../js/online.js?v3"></script>
+    <script src="../js/main.js?v4"></script>
+    <script src="../js/online.js?v4"></script>
     <script>
     (function() {
         'use strict';
 
         const room = Online.getRoomId();
-        if (room) {
-            Online.joinRoom(room, null);
-        }
+        if (room) Online.joinRoom(room, null);
 
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
@@ -129,6 +140,59 @@
 
         document.getElementById('newWishInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') document.getElementById('addWishBtn').click();
+        });
+
+        /* ---------- 模块：漂流瓶 ---------- */
+        const bottleMessages = JSON.parse(localStorage.getItem('bottleMessages') || '[]');
+        const myBottles = JSON.parse(localStorage.getItem('myBottles') || '[]');
+
+        document.getElementById('throwBottleBtn').addEventListener('click', () => {
+            const wish = prompt('写下你的心愿，扔进星河吧～（对方可以捞到哦）');
+            if (wish && wish.trim()) {
+                const bottle = {
+                    text: wish.trim(),
+                    time: new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    timestamp: Date.now()
+                };
+                myBottles.push(bottle);
+                localStorage.setItem('myBottles', JSON.stringify(myBottles));
+                // 通过联机发送
+                Online.send({ type: 'bottle_throw', bottle: bottle, timestamp: Date.now() });
+                showBottleResult('🏷️ 你的漂流瓶已扔进星河，等TA来捞吧～', 'throw');
+            }
+        });
+
+        document.getElementById('fishBottleBtn').addEventListener('click', () => {
+            if (bottleMessages.length === 0) {
+                showBottleResult('🌊 星河里还没有漂流瓶，等TA扔一个过来吧～', 'empty');
+            } else {
+                const bottle = bottleMessages.pop();
+                localStorage.setItem('bottleMessages', JSON.stringify(bottleMessages));
+                showBottleResult('🎣 捞到了一个漂流瓶！\n\n"' + bottle.text + '"\n\n— ' + bottle.time, 'fish');
+                // 通知对方已捞到
+                Online.send({ type: 'bottle_fished', timestamp: bottle.timestamp, fishedAt: Date.now() });
+            }
+        });
+
+        function showBottleResult(text, type) {
+            const el = document.getElementById('bottleResult');
+            el.style.display = 'block';
+            el.textContent = text;
+            el.className = 'bottle-result bottle-' + type;
+            setTimeout(() => { el.style.transition = 'opacity 0.5s'; el.style.opacity = '0.5'; }, 5000);
+            setTimeout(() => { el.style.display = 'none'; el.style.opacity = '1'; }, 8000);
+        }
+
+        Online.onMessage('bottle_throw', (data) => {
+            if (data.bottle) {
+                bottleMessages.push(data.bottle);
+                localStorage.setItem('bottleMessages', JSON.stringify(bottleMessages));
+                showBottleResult('🌊 星河漂来了一个漂流瓶！快去捞吧～', 'receive');
+            }
+        });
+
+        Online.onMessage('bottle_fished', (data) => {
+            showBottleResult('💕 TA 捞到了你的漂流瓶！', 'fished');
         });
 
         Online.onMessage('wish_toggle', (data) => {
