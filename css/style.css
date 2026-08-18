@@ -1,5 +1,5 @@
 /* ============================================
-   星河之旅 · 七夕特典 — 公共样式表 (v9)
+   星河之旅 · 七夕特典 — 公共样式表 (v10)
    适用于所有一级/二级页面
    ============================================ */
 
@@ -408,6 +408,42 @@ canvas {
 }
 .timeline-arrow {
     color: #ff6b9d;
+}
+.timeline-actions {
+    display: none;
+    gap: 6px;
+    margin-left: auto;
+}
+.timeline-item:hover .timeline-actions {
+    display: flex;
+}
+.timeline-edit, .timeline-del {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.timeline-edit {
+    background: rgba(255, 215, 0, 0.2);
+}
+.timeline-edit:hover {
+    background: rgba(255, 215, 0, 0.45);
+    transform: scale(1.1);
+}
+.timeline-del {
+    background: rgba(255, 80, 80, 0.15);
+}
+.timeline-del:hover {
+    background: rgba(255, 80, 80, 0.35);
+    transform: scale(1.1);
 }
 
 /* ---------- 模块：照片墙（回忆册） ---------- */

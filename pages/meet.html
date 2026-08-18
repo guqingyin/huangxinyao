@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#05051f">
     <title>📖 初见馆 · 星河之旅</title>
-    <link rel="stylesheet" href="../css/style.css?v9">
+    <link rel="stylesheet" href="../css/style.css?v10">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -22,37 +22,12 @@
     <div class="scene-content">
         <div class="scene-title">初见馆</div>
         <div class="scene-desc">我们的时间线</div>
-        <div class="timeline" id="timeline">
-            <div class="timeline-item" data-date="2023.08.22" data-detail="那天阳光很好，你在人群中对我笑，我的世界就亮了。">
-                <span class="timeline-date">2026.08.22</span>
-                <span class="timeline-text">第一次相遇，你的笑容像星星✨</span>
-                <span class="timeline-arrow">›</span>
-            </div>
-            <div class="timeline-item" data-detail="第一次约会，我紧张得说不出话，你却很温柔。">
-                <span class="timeline-date">202*.09.15</span>
-                <span class="timeline-text">第一次约会，心跳加速💓</span>
-                <span class="timeline-arrow">›</span>
-            </div>
-            <div class="timeline-item" data-detail="你说愿意的那一刻，我觉得自己是全世界最幸福的人。">
-                <span class="timeline-date">202*.10.01</span>
-                <span class="timeline-text">确定关系，激动到失眠🌙</span>
-                <span class="timeline-arrow">›</span>
-            </div>
-            <div class="timeline-item" data-detail="圣诞树下的拥抱，温暖了整个冬天。">
-                <span class="timeline-date">202*.12.25</span>
-                <span class="timeline-text">一起过圣诞，交换礼物🎄</span>
-                <span class="timeline-arrow">›</span>
-            </div>
-            <div class="timeline-item" data-detail="烛光晚餐，你比所有玫瑰都好看。">
-                <span class="timeline-date">202*.02.14</span>
-                <span class="timeline-text">第一个情人节，浪漫晚餐🕯️</span>
-                <span class="timeline-arrow">›</span>
-            </div>
-            <div class="timeline-item" data-detail="一百天，一百个爱你的理由。">
-                <span class="timeline-date">202*.05.20</span>
-                <span class="timeline-text">百天纪念，爱意满满💯</span>
-                <span class="timeline-arrow">›</span>
-            </div>
+        <div class="timeline" id="timeline"></div>
+        <div class="timeline-add">
+            <input type="date" class="timeline-add-date" id="tlDate">
+            <input type="text" class="timeline-add-input" id="tlText" placeholder="标题（如：第一次相遇）" maxlength="20">
+            <input type="text" class="timeline-add-input" id="tlDetail" placeholder="详情（点击展开显示，可选）" maxlength="60">
+            <button class="timeline-add-btn" id="tlAddBtn">+ 添加</button>
         </div>
     </div>
     <div class="mobile-tab" id="mobileTab">
@@ -68,54 +43,206 @@
     (function() {
         'use strict';
 
-        // 时间线点击
-        document.querySelectorAll('.timeline-item').forEach((item, idx) => {
-            item.addEventListener('click', () => {
-                const detail = item.dataset.detail;
-                if (detail) {
+        const STORAGE_KEY = 'timeline';
+        const DEFAULT_TIMELINE = [
+            { date: '2026.08.22', text: '第一次相遇，你的笑容像星星✨', detail: '那天阳光很好，你在人群中对我笑，我的世界就亮了。', seed: true },
+            { date: '2026.09.15', text: '第一次约会，心跳加速💓', detail: '第一次约会，我紧张得说不出话，你却很温柔。', seed: true },
+            { date: '2026.10.01', text: '确定关系，激动到失眠🌙', detail: '你说愿意的那一刻，我觉得自己是全世界最幸福的人。', seed: true },
+            { date: '2026.12.25', text: '一起过圣诞，交换礼物🎄', detail: '圣诞树下的拥抱，温暖了整个冬天。', seed: true },
+            { date: '2026.02.14', text: '第一个情人节，浪漫晚餐🕯️', detail: '烛光晚餐，你比所有玫瑰都好看。', seed: true },
+            { date: '2026.05.20', text: '百天纪念，爱意满满💯', detail: '一百天，一百个爱你的理由。', seed: true }
+        ];
+
+        function loadTimeline() {
+            const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+            if (Array.isArray(raw) && raw.length) return raw;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TIMELINE));
+            return DEFAULT_TIMELINE;
+        }
+
+        function saveTimeline(list) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        }
+
+        function buildItemNode(item, idx) {
+            const node = document.createElement('div');
+            node.className = 'timeline-item';
+            node.dataset.idx = idx;
+            node.innerHTML = `
+                <span class="timeline-date">${item.date || '记不清'}</span>
+                <span class="timeline-text">${item.text || ''}</span>
+                <span class="timeline-arrow">›</span>
+                <div class="timeline-actions">
+                    <button class="timeline-edit" data-idx="${idx}" title="编辑">✎</button>
+                    <button class="timeline-del" data-idx="${idx}" title="删除">×</button>
+                </div>
+            `;
+            return node;
+        }
+
+        function renderTimeline() {
+            const list = loadTimeline();
+            const wrap = document.getElementById('timeline');
+            wrap.innerHTML = '';
+            list.forEach((item, idx) => wrap.appendChild(buildItemNode(item, idx)));
+            bindItemEvents();
+        }
+
+        function bindItemEvents() {
+            const wrap = document.getElementById('timeline');
+            wrap.querySelectorAll('.timeline-item').forEach(item => {
+                const idx = +item.dataset.idx;
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.timeline-actions')) return; // 不点编辑/删除
+                    const list = loadTimeline();
+                    const data = list[idx];
+                    if (!data || !data.detail) return;
                     const tip = document.createElement('div');
                     tip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,40,0.95);color:#fff;padding:20px;border-radius:12px;z-index:1000;max-width:300px;text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.8);';
-                    tip.textContent = detail;
+                    tip.textContent = data.detail;
                     document.body.appendChild(tip);
                     setTimeout(() => tip.remove(), 2000);
+                    if (Online && Online.send) {
+                        Online.send({ type: 'timeline_view', index: idx, detail: data.detail, timestamp: Date.now() });
+                    }
+                });
+            });
+            wrap.querySelectorAll('.timeline-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editItem(+btn.dataset.idx);
+                });
+            });
+            wrap.querySelectorAll('.timeline-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteItem(+btn.dataset.idx);
+                });
+            });
+        }
 
-                    Online.send({
-                        type: 'timeline_view',
-                        index: idx,
-                        detail: detail,
-                        timestamp: Date.now()
-                    });
+        function editItem(idx) {
+            const list = loadTimeline();
+            const item = list[idx];
+            if (!item) return;
+            const newDate = prompt('日期（YYYY.MM.DD）', item.date || '');
+            if (newDate === null) return;
+            const newText = prompt('标题', item.text || '');
+            if (newText === null) return;
+            const newDetail = prompt('详情（点击展开显示，可留空）', item.detail || '');
+            if (newDetail === null) return;
+            item.date = newDate.trim() || item.date;
+            item.text = newText.trim() || item.text;
+            item.detail = newDetail.trim();
+            saveTimeline(list);
+            renderTimeline();
+            if (Online && Online.send) {
+                Online.send({ type: 'timeline_update', index: idx, item: item, timestamp: Date.now() });
+            }
+        }
+
+        function deleteItem(idx) {
+            const list = loadTimeline();
+            if (!confirm('删除这条时间节点？')) return;
+            list.splice(idx, 1);
+            saveTimeline(list);
+            renderTimeline();
+            if (Online && Online.send) {
+                Online.send({ type: 'timeline_delete', index: idx, timestamp: Date.now() });
+            }
+        }
+
+        function addItem() {
+            const date = document.getElementById('tlDate').value;
+            const text = document.getElementById('tlText').value.trim();
+            const detail = document.getElementById('tlDetail').value.trim();
+            if (!text) { alert('请填写标题'); return; }
+            const item = {
+                date: date ? date.replace(/-/g, '.') : '',
+                text: text,
+                detail: detail,
+                timestamp: Date.now()
+            };
+            const list = loadTimeline();
+            list.push(item);
+            saveTimeline(list);
+            document.getElementById('tlDate').value = '';
+            document.getElementById('tlText').value = '';
+            document.getElementById('tlDetail').value = '';
+            renderTimeline();
+            if (Online && Online.send) {
+                Online.send({ type: 'timeline_add', item: item, timestamp: Date.now() });
+            }
+        }
+
+        // 添加按钮
+        document.getElementById('tlAddBtn').addEventListener('click', addItem);
+
+        // 联机同步 handlers
+        if (Online && Online.onMessage) {
+            Online.onMessage('timeline_add', (data) => {
+                if (!data || !data.item) return;
+                const list = loadTimeline();
+                if (list.find(x => x.text === data.item.text && x.date === data.item.date)) return;
+                list.push(data.item);
+                saveTimeline(list);
+                renderTimeline();
+            });
+
+            Online.onMessage('timeline_update', (data) => {
+                if (typeof data.index !== 'number' || !data.item) return;
+                const list = loadTimeline();
+                if (list[data.index]) {
+                    list[data.index] = data.item;
+                    saveTimeline(list);
+                    renderTimeline();
                 }
             });
-        });
 
-        // 对方在看哪条时间线
-        Online.onMessage('timeline_view', (data) => {
-            const items = document.querySelectorAll('.timeline-item');
-            if (items[data.index]) {
-                items.forEach(item => { item.style.borderColor = ''; item.style.boxShadow = ''; });
-                items[data.index].style.borderColor = '#ff6b9d';
-                items[data.index].style.boxShadow = '0 0 20px rgba(255,107,157,0.4)';
+            Online.onMessage('timeline_delete', (data) => {
+                if (typeof data.index !== 'number') return;
+                const list = loadTimeline();
+                if (data.index >= 0 && data.index < list.length) {
+                    list.splice(data.index, 1);
+                    saveTimeline(list);
+                    renderTimeline();
+                }
+            });
 
-                const tip = document.createElement('div');
-                tip.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,107,157,0.2);color:#ff6b9d;padding:8px 20px;border-radius:20px;font-size:0.8rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);';
-                tip.textContent = '👀 TA 正在看：' + items[data.index].querySelector('.timeline-text').textContent;
-                document.body.appendChild(tip);
-                setTimeout(() => {
-                    tip.style.transition = 'opacity 0.5s';
-                    tip.style.opacity = '0';
-                    setTimeout(() => tip.remove(), 500);
-                }, 2500);
-            }
-        });
+            // 对方在看哪条时间线
+            Online.onMessage('timeline_view', (data) => {
+                const items = document.querySelectorAll('.timeline-item');
+                if (items[data.index]) {
+                    items.forEach(item => { item.style.borderColor = ''; item.style.boxShadow = ''; });
+                    items[data.index].style.borderColor = '#ff6b9d';
+                    items[data.index].style.boxShadow = '0 0 20px rgba(255,107,157,0.4)';
+                    const tip = document.createElement('div');
+                    tip.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,107,157,0.2);color:#ff6b9d;padding:8px 20px;border-radius:20px;font-size:0.8rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);';
+                    tip.textContent = '👀 TA 正在看：' + items[data.index].querySelector('.timeline-text').textContent;
+                    document.body.appendChild(tip);
+                    setTimeout(() => {
+                        tip.style.transition = 'opacity 0.5s';
+                        tip.style.opacity = '0';
+                        setTimeout(() => tip.remove(), 500);
+                    }, 2500);
+                }
+            });
 
-        Online.onMessage('page_change', (data) => {
-            const indicator = document.getElementById('onlineIndicator');
-            if (indicator) {
-                const text = indicator.querySelector('.online-text');
-                if (text) text.textContent = 'TA在 ' + data.page;
-            }
-        });
+            Online.onMessage('page_change', (data) => {
+                const indicator = document.getElementById('onlineIndicator');
+                if (indicator) {
+                    const text = indicator.querySelector('.online-text');
+                    if (text) text.textContent = 'TA在 ' + data.page;
+                }
+            });
+        }
+
+        // 首次渲染
+        if (Online && Online.onReady) {
+            Online.onReady(renderTimeline);
+        } else {
+            renderTimeline();
+        }
     })();
     </script>
 </body>
