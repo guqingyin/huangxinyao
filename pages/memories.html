@@ -22,32 +22,7 @@
     <div class="scene-content">
         <div class="scene-title">回忆册</div>
         <div class="scene-desc">拍立得照片墙 · 点击翻转看心情</div>
-        <div class="photo-grid">
-            <div class="photo-card" data-idx="0" style="transform: rotate(-6deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">第一次合照</span></div>
-                <div class="photo-back">那天我们都笑得很傻，但我好喜欢。</div>
-            </div>
-            <div class="photo-card" data-idx="1" style="transform: rotate(4deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">海边日落</span></div>
-                <div class="photo-back">海浪声和你的笑声，是夏天最美的旋律。</div>
-            </div>
-            <div class="photo-card" data-idx="2" style="transform: rotate(-2deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">一起做饭</span></div>
-                <div class="photo-back">虽然你切菜的样子有点笨拙，但很可爱。</div>
-            </div>
-            <div class="photo-card" data-idx="3" style="transform: rotate(7deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">撸猫日常</span></div>
-                <div class="photo-back">以后我们一起养一只猫吧。</div>
-            </div>
-            <div class="photo-card" data-idx="4" style="transform: rotate(-5deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">游乐园</span></div>
-                <div class="photo-back">你在旋转木马上笑得像个小孩子。</div>
-            </div>
-            <div class="photo-card" data-idx="5" style="transform: rotate(3deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">深夜电影</span></div>
-                <div class="photo-back">电影很精彩，但你靠在我肩上的时候，我什么都没看进去。</div>
-            </div>
-        </div>
+        <div class="photo-grid" id="photoGrid"></div>
     </div>
     <div class="mobile-tab" id="mobileTab">
         <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
@@ -61,12 +36,8 @@
     <script>
     (function() {
         'use strict';
-
         const room = Online.getRoomId();
-        if (room) {
-            Online.joinRoom(room, null);
-        }
-
+        if (room) Online.joinRoom(room, null);
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.endsWith('.html') && !href.includes('?')) {
@@ -78,19 +49,32 @@
             }
         });
 
-        document.querySelectorAll('.photo-card').forEach(card => {
-            card.addEventListener('click', () => {
-                card.classList.toggle('flipped');
-                const idx = parseInt(card.dataset.idx);
-                const isFlipped = card.classList.contains('flipped');
-                Online.send({
-                    type: 'photo_flip',
-                    index: idx,
-                    flipped: isFlipped,
-                    timestamp: Date.now()
+        const defaultPhotos = [
+            { caption: '第一次合照', back: '那天我们都笑得很傻，但我好喜欢。', rot: -6 },
+            { caption: '海边日落', back: '海浪声和你的笑声，是夏天最美的旋律。', rot: 4 },
+            { caption: '一起做饭', back: '虽然你切菜的样子有点笨拙，但很可爱。', rot: -2 },
+            { caption: '撸猫日常', back: '以后我们一起养一只猫吧。', rot: 7 },
+            { caption: '游乐园', back: '你在旋转木马上笑得像个小孩子。', rot: -5 },
+            { caption: '深夜电影', back: '你靠在我肩上的时候，我什么都没看进去。', rot: 3 }
+        ];
+        let photos = JSON.parse(localStorage.getItem('photos') || 'null') || defaultPhotos;
+        function savePhotos() { localStorage.setItem('photos', JSON.stringify(photos)); }
+        function escapeHtml(s) { return s.replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+        function renderPhotos() {
+            const grid = document.getElementById('photoGrid');
+            grid.innerHTML = photos.map((p, idx) =>
+                '<div class="photo-card" data-idx="' + idx + '" style="transform: rotate(' + p.rot + 'deg);"><div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">' + escapeHtml(p.caption) + '</span></div><div class="photo-back">' + escapeHtml(p.back) + '</div></div>'
+            ).join('');
+            grid.querySelectorAll('.photo-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    card.classList.toggle('flipped');
+                    const idx = parseInt(card.dataset.idx);
+                    const isFlipped = card.classList.contains('flipped');
+                    Online.send({ type: 'photo_flip', index: idx, flipped: isFlipped, timestamp: Date.now() });
                 });
             });
-        });
+        }
+        renderPhotos();
 
         Online.onMessage('photo_flip', (data) => {
             const cards = document.querySelectorAll('.photo-card');
@@ -101,13 +85,9 @@
                 setTimeout(() => { cards[data.index].style.boxShadow = ''; }, 1500);
             }
         });
-
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
-            if (indicator) {
-                const text = indicator.querySelector('.online-text');
-                if (text) text.textContent = 'TA在 ' + data.page;
-            }
+            if (indicator) { const text = indicator.querySelector('.online-text'); if (text) text.textContent = 'TA在 ' + data.page; }
         });
     })();
     </script>

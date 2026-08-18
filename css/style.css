@@ -924,3 +924,192 @@ canvas {
         font-size: 0.8rem;
     }
 }
+/* ============================================
+   新增样式 — 倒计时、留言板、心愿统计、烟花
+   追加到 style.css 末尾
+   ============================================ */
+
+/* ---------- 模块：倒计时卡片 ---------- */
+.countdown-card {
+    position: relative;
+    z-index: 5;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 8px 20px;
+    background: rgba(255, 215, 0, 0.08);
+    border-radius: 30px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    margin-bottom: 1rem;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.countdown-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.05em;
+}
+.countdown-days {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #ffd700;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+.countdown-unit {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---------- 模块：留言板 ---------- */
+.message-board {
+    position: relative;
+    z-index: 10;
+    margin-top: 1.5rem;
+    padding: 15px;
+    background: rgba(10, 10, 40, 0.5);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    max-width: 360px;
+    width: 90%;
+    text-align: left;
+}
+.message-board-title {
+    font-size: 0.9rem;
+    color: #ffd700;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+.message-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+    padding-right: 4px;
+}
+.message-list::-webkit-scrollbar { width: 3px; }
+.message-list::-webkit-scrollbar-thumb { background: rgba(255, 107, 157, 0.3); border-radius: 2px; }
+.message-item {
+    padding: 6px 10px;
+    margin: 4px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 2px solid #ff6b9d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.message-text {
+    color: #fff;
+    font-size: 0.8rem;
+    flex: 1;
+    word-break: break-word;
+}
+.message-time {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.65rem;
+    white-space: nowrap;
+}
+.message-form {
+    display: flex;
+    gap: 6px;
+}
+.message-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 0.8rem;
+    outline: none;
+    -webkit-user-select: text;
+    user-select: text;
+}
+.message-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.message-input:focus { border-color: #ff6b9d; }
+.message-send-btn {
+    background: linear-gradient(135deg, #ff6b9d, #c44dff);
+    border: none;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+/* ---------- 模块：心愿统计 ---------- */
+.wish-stats {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 12px;
+    font-size: 0.75rem;
+}
+.wish-stat-item {
+    color: rgba(255, 255, 255, 0.7);
+}
+.wish-stat-item strong {
+    color: #ffd700;
+    font-size: 0.9rem;
+}
+
+/* ---------- 模块：时间线添加表单 ---------- */
+.timeline-add {
+    display: flex;
+    gap: 6px;
+    margin-top: 15px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    flex-wrap: wrap;
+}
+.timeline-add-input {
+    flex: 1;
+    min-width: 120px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 0.8rem;
+    outline: none;
+    -webkit-user-select: text;
+    user-select: text;
+}
+.timeline-add-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.timeline-add-date {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 0.75rem;
+    outline: none;
+    color-scheme: dark;
+}
+.timeline-add-btn {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    border: none;
+    color: #3a1a00;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/* ---------- 模块：移动端新增适配 ---------- */
+@media (max-width: 768px) {
+    .countdown-card { padding: 6px 14px; }
+    .countdown-days { font-size: 1.1rem; }
+    .message-board { padding: 12px; max-width: 90%; }
+    .message-list { max-height: 120px; }
+    .wish-stats { gap: 15px; }
+    .timeline-add { flex-direction: column; }
+    .timeline-add-input, .timeline-add-date { width: 100%; }
+}

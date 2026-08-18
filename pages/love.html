@@ -21,7 +21,7 @@
     </div>
     <div class="scene-content">
         <div class="scene-title">告白屋</div>
-        <div class="scene-desc">抽一张情话纸条吧</div>
+        <div class="scene-desc">抽一张情话纸条 · 写下你的心意</div>
         <div class="jar-container">
             <div class="jar" id="loveJar"><span class="jar-inner">🫙</span></div>
             <div id="loveNoteContainer"></div>
@@ -51,12 +51,8 @@
     <script>
     (function() {
         'use strict';
-
         const room = Online.getRoomId();
-        if (room) {
-            Online.joinRoom(room, null);
-        }
-
+        if (room) Online.joinRoom(room, null);
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.endsWith('.html') && !href.includes('?')) {
@@ -78,25 +74,16 @@
             '我这个人超好的，你要不要试着喜欢我？',
             '七夕快乐，我的宝贝。',
             '有你在身边，每天都是情人节。',
-            '我想把所有的浪漫都给你。'
+            '我想把所有的浪漫都给你。',
+            '你是我的星辰大海，是我心之所向。',
+            '喜欢你这件事，我从来没收想过要停。',
+            '如果一定要给这份爱加个期限，那是一万年。',
+            '你笑起来真好看，像月牙弯弯。',
+            '我贪恋的人间烟火，不偏不倚，恰好是你。'
         ];
-
         let noteIndex = 0;
-        const collectedNotes = [];
-
-        document.getElementById('loveJar').addEventListener('click', () => {
-            if (noteIndex >= loveNotes.length) {
-                alert('🎉 情话已全部抽完，你是我写不完的诗');
-                return;
-            }
-            const note = loveNotes[noteIndex];
-            noteIndex++;
-            document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note">' + note + '</div>';
-            collectedNotes.push(note);
-            updateCollectedNotes();
-            Online.send({ type: 'love_note', action: 'add', note: note, timestamp: Date.now() });
-        });
-
+        let collectedNotes = JSON.parse(localStorage.getItem('loveNotes') || '[]');
+        function saveCollected() { localStorage.setItem('loveNotes', JSON.stringify(collectedNotes)); }
         function updateCollectedNotes() {
             const container = document.getElementById('collectedNotes');
             if (collectedNotes.length === 0) {
@@ -104,19 +91,34 @@
                 return;
             }
             container.innerHTML = collectedNotes.map((note, idx) =>
-                '<div class="collected-note"><span>' + note + '</span><button data-idx="' + idx + '" style="background:none;border:none;color:#ff6b9d;cursor:pointer;">✕</button></div>'
+                '<div class="collected-note"><span>' + escapeHtml(note) + '</span><button data-idx="' + idx + '" style="background:none;border:none;color:#ff6b9d;cursor:pointer;">✕</button></div>'
             ).join('');
             container.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.dataset.idx);
                     const note = collectedNotes[idx];
                     collectedNotes.splice(idx, 1);
-                    updateCollectedNotes();
+                    saveCollected(); updateCollectedNotes();
                     Online.send({ type: 'love_note', action: 'remove', note: note, timestamp: Date.now() });
                 });
             });
         }
+        function escapeHtml(s) { return s.replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
         updateCollectedNotes();
+
+        document.getElementById('loveJar').addEventListener('click', () => {
+            // 随机抽一条还没抽过的
+            const available = loveNotes.filter(n => !collectedNotes.includes(n));
+            if (available.length === 0) {
+                alert('🎉 情话已全部抽完，你是我写不完的诗');
+                return;
+            }
+            const note = available[Math.floor(Math.random() * available.length)];
+            document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note">' + note + '</div>';
+            collectedNotes.push(note);
+            saveCollected(); updateCollectedNotes();
+            Online.send({ type: 'love_note', action: 'add', note: note, timestamp: Date.now() });
+        });
 
         const loveInput = document.getElementById('loveInput');
         let typingTimer = null;
@@ -127,9 +129,10 @@
             typingTimer = setTimeout(() => {
                 if (text.trim()) {
                     collectedNotes.push(text.trim());
-                    updateCollectedNotes();
+                    saveCollected(); updateCollectedNotes();
                     loveInput.value = '';
                     Online.send({ type: 'typing', text: '', timestamp: Date.now() });
+                    Online.send({ type: 'love_note', action: 'add', note: text.trim(), timestamp: Date.now() });
                 }
             }, 2000);
         });
@@ -137,31 +140,21 @@
         Online.onMessage('typing', (data) => {
             const typingEl = document.getElementById('partnerTyping');
             const textEl = document.getElementById('partnerTypingText');
-            if (data.text) {
-                typingEl.style.display = 'flex';
-                textEl.textContent = data.text;
-            } else {
-                typingEl.style.display = 'none';
-            }
+            if (data.text) { typingEl.style.display = 'flex'; textEl.textContent = data.text; }
+            else { typingEl.style.display = 'none'; }
         });
-
         Online.onMessage('love_note', (data) => {
             if (data.action === 'add' && data.note) {
                 document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note" style="border-color:#ff6b9d;">' + data.note + '</div>';
-                collectedNotes.push(data.note);
-                updateCollectedNotes();
+                if (!collectedNotes.includes(data.note)) { collectedNotes.push(data.note); saveCollected(); updateCollectedNotes(); }
             } else if (data.action === 'remove' && data.note) {
                 const idx = collectedNotes.indexOf(data.note);
-                if (idx > -1) { collectedNotes.splice(idx, 1); updateCollectedNotes(); }
+                if (idx > -1) { collectedNotes.splice(idx, 1); saveCollected(); updateCollectedNotes(); }
             }
         });
-
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
-            if (indicator) {
-                const text = indicator.querySelector('.online-text');
-                if (text) text.textContent = 'TA在 ' + data.page;
-            }
+            if (indicator) { const text = indicator.querySelector('.online-text'); if (text) text.textContent = 'TA在 ' + data.page; }
         });
     })();
     </script>

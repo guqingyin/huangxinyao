@@ -1,10 +1,4 @@
 <!DOCTYPE html>
-<!--
-  ============================================
-  星河之旅 · 七夕特典 — 一级首页（联机版 PeerJS）
-  无需服务端，P2P 直连
-  ============================================
--->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -16,53 +10,33 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
-    <!-- Canvas 背景层 -->
     <canvas id="bg-canvas"></canvas>
     <canvas id="particle-canvas"></canvas>
     <canvas id="fx-canvas"></canvas>
-
-    <!-- 自定义光标（仅桌面端显示） -->
     <div class="cursor-glow" id="cursorGlow"></div>
     <div class="cursor-ring" id="cursorRing"></div>
-
-    <!-- 顶部导航栏 -->
     <div class="top-nav">
         <a href="index.html" class="nav-btn" title="星河入口">🏠</a>
         <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
     </div>
-
-    <!-- 首页：星河入口 -->
     <div class="home-scene" id="home-scene">
         <div class="home-title">七 夕 快 乐</div>
         <div class="home-subtitle">✨ 纤云弄巧 · 飞星传恨 ✨</div>
 
-        <!-- 星空导航：点击星星跳转到各二级页面 -->
+        <!-- 倒计时卡片 -->
+        <div class="countdown-card" id="countdownCard">
+            <div class="countdown-label">💖 在一起</div>
+            <div class="countdown-days" id="countdownDays">—</div>
+            <div class="countdown-unit">天</div>
+        </div>
+
         <div class="star-nav">
-            <div class="moon" id="moon">
-                <span class="moon-text">🌙</span>
-            </div>
-            <!-- 星星导航 → 二级页面（带 room 参数传递） -->
-            <a href="pages/meet.html" class="star-item star-1" data-page="meet">
-                ✨
-                <span class="star-label">初见馆</span>
-            </a>
-            <a href="pages/memories.html" class="star-item star-2" data-page="memories">
-                ✨
-                <span class="star-label">回忆册</span>
-            </a>
-            <a href="pages/love.html" class="star-item star-3" data-page="love">
-                ✨
-                <span class="star-label">告白屋</span>
-            </a>
-            <a href="pages/wish.html" class="star-item star-4" data-page="wish">
-                ✨
-                <span class="star-label">心愿星</span>
-            </a>
-            <a href="pages/secret.html" class="star-item star-5" data-page="secret">
-                ✨
-                <span class="star-label">秘密匣</span>
-            </a>
+            <div class="moon" id="moon"><span class="moon-text">🌙</span></div>
+            <a href="pages/meet.html" class="star-item star-1" data-page="meet">✨<span class="star-label">初见馆</span></a>
+            <a href="pages/memories.html" class="star-item star-2" data-page="memories">✨<span class="star-label">回忆册</span></a>
+            <a href="pages/love.html" class="star-item star-3" data-page="love">✨<span class="star-label">告白屋</span></a>
+            <a href="pages/wish.html" class="star-item star-4" data-page="wish">✨<span class="star-label">心愿星</span></a>
+            <a href="pages/secret.html" class="star-item star-5" data-page="secret">✨<span class="star-label">秘密匣</span></a>
         </div>
 
         <!-- 联机入口 -->
@@ -73,32 +47,30 @@
                 <button class="room-btn create-btn" id="createRoomBtn">创建房间</button>
                 <button class="room-btn join-btn" id="joinRoomBtn">加入房间</button>
             </div>
-            <!-- 加入房间输入区（默认隐藏） -->
             <div class="join-form" id="joinForm" style="display:none;">
                 <input type="text" class="room-input" id="roomInput" placeholder="房间号" maxlength="20">
                 <input type="password" class="room-input" id="passcodeInput" placeholder="邀请码" maxlength="4">
                 <button class="room-btn join-confirm-btn" id="joinConfirmBtn">进入</button>
             </div>
-            <!-- 创建房间信息展示区（默认隐藏） -->
             <div class="room-info" id="roomInfo" style="display:none;">
-                <div class="room-info-row">
-                    <span class="room-info-label">房间号</span>
-                    <span class="room-info-value" id="roomInfoId">-</span>
-                </div>
-                <div class="room-info-row">
-                    <span class="room-info-label">邀请码</span>
-                    <span class="room-info-value" id="roomInfoPasscode">-</span>
-                </div>
-                <div class="room-info-row">
-                    <span class="room-info-label">链接</span>
-                    <span class="room-info-value room-info-link" id="roomInfoLink">点击复制</span>
-                </div>
+                <div class="room-info-row"><span class="room-info-label">房间号</span><span class="room-info-value" id="roomInfoId">-</span></div>
+                <div class="room-info-row"><span class="room-info-label">邀请码</span><span class="room-info-value" id="roomInfoPasscode">-</span></div>
+                <div class="room-info-row"><span class="room-info-label">链接</span><span class="room-info-value room-info-link" id="roomInfoLink">点击复制</span></div>
                 <div class="room-info-tip">把房间号和邀请码发给TA吧～</div>
+            </div>
+        </div>
+
+        <!-- 留言板 -->
+        <div class="message-board" id="messageBoard">
+            <div class="message-board-title">📝 留言板</div>
+            <div class="message-list" id="messageList"></div>
+            <div class="message-form">
+                <input type="text" class="message-input" id="messageInput" placeholder="写下你想说的话..." maxlength="50">
+                <button class="message-send-btn" id="messageSendBtn">发送</button>
             </div>
         </div>
     </div>
 
-    <!-- 底部移动导航（移动端显示） -->
     <div class="mobile-tab" id="mobileTab">
         <a href="index.html" class="active-tab"><span class="tab-icon">🏠</span>首页</a>
         <a href="pages/meet.html"><span class="tab-icon">📖</span>初见</a>
@@ -113,9 +85,20 @@
     (function() {
         'use strict';
 
-        /* ---------- 模块：首页交互逻辑 ---------- */
+        /* ---------- 模块：倒计时天数 ---------- */
+        // 从 localStorage 读取纪念日，默认 2026-08-18
+        function getAnniversary() {
+            return localStorage.getItem('anniversary') || '2026-08-18';
+        }
+        function calcDays() {
+            const start = new Date(getAnniversary());
+            const now = new Date();
+            const diff = Math.floor((now - start) / 86400000);
+            return diff >= 0 ? diff : 0;
+        }
+        document.getElementById('countdownDays').textContent = calcDays();
 
-        // 月亮点击 5 次 → 跳转秘密匣（隐藏彩蛋）
+        /* ---------- 模块：月亮彩蛋 ---------- */
         let moonClickCount = 0;
         const moon = document.getElementById('moon');
         if (moon) {
@@ -128,24 +111,15 @@
             });
         }
 
-        /* ---------- 模块：联机房间管理 ---------- */
-
-        // 导航辅助：携带 room 参数跳转
+        /* ---------- 模块：导航（携带 room 参数） ---------- */
         function navigateTo(page) {
             const room = Online.getRoomId();
             const url = (page === 'index' ? 'index.html' : 'pages/' + page + '.html') + (room ? '?room=' + room : '');
             window.location.href = url;
         }
-
-        // 星星导航：拦截点击，加上 room 参数
         document.querySelectorAll('.star-item').forEach(star => {
-            star.addEventListener('click', (e) => {
-                e.preventDefault();
-                navigateTo(star.dataset.page);
-            });
+            star.addEventListener('click', (e) => { e.preventDefault(); navigateTo(star.dataset.page); });
         });
-
-        // 移动端导航：拦截点击，加上 room 参数
         document.querySelectorAll('.mobile-tab a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -155,69 +129,50 @@
             });
         });
 
-        /* ---------- 模块：创建房间（Host） ---------- */
+        /* ---------- 模块：创建房间 ---------- */
         document.getElementById('createRoomBtn').addEventListener('click', async () => {
             const roomId = Online.generateRoomId();
             const passcode = Online.generatePasscode();
-
-            // 显示房间信息
             document.getElementById('roomInfoId').textContent = roomId;
             document.getElementById('roomInfoPasscode').textContent = passcode;
             const link = window.location.origin + window.location.pathname + '?room=' + roomId;
             document.getElementById('roomInfoLink').dataset.link = link;
             document.getElementById('roomInfoLink').textContent = '点击复制';
-
             document.getElementById('roomInfo').style.display = 'block';
             document.getElementById('joinForm').style.display = 'none';
-
-            // 创建房间（PeerJS Host）
             await Online.createRoom(roomId, passcode);
-
-            // 更新 URL
             window.history.replaceState({}, '', window.location.pathname + '?room=' + roomId);
-
-            // 复制链接
             document.getElementById('roomInfoLink').addEventListener('click', () => {
                 const text = document.getElementById('roomInfoLink').dataset.link;
                 navigator.clipboard.writeText(text).then(() => {
                     document.getElementById('roomInfoLink').textContent = '已复制!';
-                    setTimeout(() => {
-                        document.getElementById('roomInfoLink').textContent = '点击复制';
-                    }, 2000);
+                    setTimeout(() => { document.getElementById('roomInfoLink').textContent = '点击复制'; }, 2000);
                 });
             });
         });
 
-        /* ---------- 模块：加入房间（Guest） ---------- */
+        /* ---------- 模块：加入房间 ---------- */
         document.getElementById('joinRoomBtn').addEventListener('click', () => {
             document.getElementById('joinForm').style.display = 'flex';
             document.getElementById('roomInfo').style.display = 'none';
             document.getElementById('roomInput').focus();
         });
-
         document.getElementById('joinConfirmBtn').addEventListener('click', async () => {
             const roomId = document.getElementById('roomInput').value.trim();
             const passcode = document.getElementById('passcodeInput').value.trim();
             if (roomId && passcode) {
                 document.getElementById('joinConfirmBtn').textContent = '连接中...';
                 await Online.joinRoom(roomId, passcode);
-                // 更新 URL
                 window.history.replaceState({}, '', window.location.pathname + '?room=' + roomId);
                 document.getElementById('joinForm').style.display = 'none';
                 document.getElementById('joinConfirmBtn').textContent = '进入';
-            } else {
-                alert('请输入房间号和邀请码');
-            }
+            } else { alert('请输入房间号和邀请码'); }
         });
-
-        // 回车提交
         document.getElementById('passcodeInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('joinConfirmBtn').click();
-            }
+            if (e.key === 'Enter') document.getElementById('joinConfirmBtn').click();
         });
 
-        /* ---------- 模块：URL 已有 room 参数时自动显示加入表单 ---------- */
+        /* ---------- 模块：URL 有 room 参数时 ---------- */
         const existingRoom = Online.getRoomId();
         if (existingRoom) {
             document.getElementById('createRoomBtn').style.display = 'none';
@@ -227,42 +182,94 @@
             document.getElementById('passcodeInput').focus();
         }
 
-        /* ---------- 模块：监听对方页面切换 ---------- */
+        /* ---------- 模块：留言板 ---------- */
+        const messages = JSON.parse(localStorage.getItem('messages') || '[]');
+        function renderMessages() {
+            const list = document.getElementById('messageList');
+            if (messages.length === 0) {
+                list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:0.75rem;text-align:center;padding:10px;">还没有留言，写一句吧～</div>';
+                return;
+            }
+            list.innerHTML = messages.map(m =>
+                '<div class="message-item"><span class="message-text">' + escapeHtml(m.text) + '</span><span class="message-time">' + m.time + '</span></div>'
+            ).join('');
+            list.scrollTop = list.scrollHeight;
+        }
+        function escapeHtml(s) { return s.replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+        function addMessage(text) {
+            const now = new Date();
+            const msg = { text: text, time: (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') };
+            messages.push(msg);
+            if (messages.length > 50) messages.shift();
+            localStorage.setItem('messages', JSON.stringify(messages));
+            renderMessages();
+            // 联机同步
+            Online.send({ type: 'message_board', text: text, time: msg.time, timestamp: Date.now() });
+        }
+        document.getElementById('messageSendBtn').addEventListener('click', () => {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (text) { addMessage(text); input.value = ''; }
+        });
+        document.getElementById('messageInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('messageSendBtn').click();
+        });
+        renderMessages();
+
+        /* ---------- 模块：联机消息监听 ---------- */
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
             if (indicator) {
                 const text = indicator.querySelector('.online-text');
                 if (text && data.page) {
-                    const pageMap = {
-                        'index': '星河入口',
-                        'meet': '初见馆',
-                        'memories': '回忆册',
-                        'love': '告白屋',
-                        'wish': '心愿星',
-                        'secret': '秘密匣'
-                    };
+                    const pageMap = { 'index':'星河入口','meet':'初见馆','memories':'回忆册','love':'告白屋','wish':'心愿星','secret':'秘密匣' };
                     text.textContent = 'TA在 ' + (pageMap[data.page] || data.page);
                 }
             }
         });
-
-        /* ---------- 模块：监听对方加入 ---------- */
         Online.onMessage('sys', (data) => {
             if (data.action === 'user_join') {
-                showFloatTip('💕 TA 来了');
+                // 对方加入，发送当前留言板
+                Online.send({ type: 'message_board_sync', messages: messages, timestamp: Date.now() });
+            }
+        });
+        Online.onMessage('message_board', (data) => {
+            messages.push({ text: data.text, time: data.time });
+            if (messages.length > 50) messages.shift();
+            localStorage.setItem('messages', JSON.stringify(messages));
+            renderMessages();
+        });
+        Online.onMessage('message_board_sync', (data) => {
+            if (data.messages && Array.isArray(data.messages)) {
+                messages.length = 0;
+                messages.push(...data.messages);
+                localStorage.setItem('messages', JSON.stringify(messages));
+                renderMessages();
             }
         });
 
-        function showFloatTip(text) {
-            const tip = document.createElement('div');
-            tip.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(10,10,40,0.9);color:#fff;padding:8px 20px;border-radius:20px;font-size:0.85rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);';
-            tip.textContent = text;
-            document.body.appendChild(tip);
-            setTimeout(() => {
-                tip.style.transition = 'opacity 0.5s';
-                tip.style.opacity = '0';
-                setTimeout(() => tip.remove(), 500);
-            }, 2500);
+        /* ---------- 模块：烟花特效（点击空白处） ---------- */
+        document.addEventListener('click', (e) => {
+            // 排除按钮、链接、输入框
+            if (e.target.closest('button, a, input, textarea, .jar, .photo-card, .wish-item, .timeline-item, .moon')) return;
+            spawnFirework(e.clientX, e.clientY);
+        });
+        function spawnFirework(x, y) {
+            const colors = ['#ffd700', '#ff6b9d', '#c44dff', '#00e5ff', '#fff'];
+            const count = 20;
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const angle = (i / count) * Math.PI * 2;
+                const dist = 30 + Math.random() * 60;
+                p.style.cssText = 'position:fixed;left:' + x + 'px;top:' + y + 'px;width:4px;height:4px;border-radius:50%;background:' + color + ';box-shadow:0 0 8px ' + color + ';pointer-events:none;z-index:1000;transition:all 1s ease-out;';
+                document.body.appendChild(p);
+                requestAnimationFrame(() => {
+                    p.style.transform = 'translate(' + Math.cos(angle) * dist + 'px,' + Math.sin(angle) * dist + 'px) scale(0)';
+                    p.style.opacity = '0';
+                });
+                setTimeout(() => p.remove(), 1000);
+            }
         }
     })();
     </script>

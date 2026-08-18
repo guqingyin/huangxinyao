@@ -21,24 +21,12 @@
     </div>
     <div class="scene-content">
         <div class="scene-title">心愿星</div>
-        <div class="scene-desc">点击星星点亮心愿 · 添加新愿望</div>
-        <div class="wish-list" id="wishList">
-            <div class="wish-item" data-wish="一起看一次日出" data-lit="false">
-                <span class="wish-star">☆</span><span class="wish-text">一起看一次日出</span>
-            </div>
-            <div class="wish-item" data-wish="一起养一只猫" data-lit="false">
-                <span class="wish-star">☆</span><span class="wish-text">一起养一只猫</span>
-            </div>
-            <div class="wish-item" data-wish="去看一次海" data-lit="false">
-                <span class="wish-star">☆</span><span class="wish-text">去看一次海</span>
-            </div>
-            <div class="wish-item" data-wish="去迪士尼看烟花" data-lit="false">
-                <span class="wish-star">☆</span><span class="wish-text">去迪士尼看烟花</span>
-            </div>
-            <div class="wish-item" data-wish="一起过下个七夕" data-lit="false">
-                <span class="wish-star">☆</span><span class="wish-text">一起过下个七夕</span>
-            </div>
+        <div class="scene-desc">点击星星点亮心愿 · 许下新愿望</div>
+        <div class="wish-stats" id="wishStats">
+            <span class="wish-stat-item">✨ 已点亮 <strong id="litCount">0</strong></span>
+            <span class="wish-stat-item">⭐ 总愿望 <strong id="totalCount">0</strong></span>
         </div>
+        <div class="wish-list" id="wishList"></div>
         <div class="add-wish-form">
             <input type="text" class="add-wish-input" id="newWishInput" placeholder="许下新的愿望..." maxlength="30">
             <button class="add-wish-btn" id="addWishBtn">许愿</button>
@@ -56,12 +44,8 @@
     <script>
     (function() {
         'use strict';
-
         const room = Online.getRoomId();
-        if (room) {
-            Online.joinRoom(room, null);
-        }
-
+        if (room) Online.joinRoom(room, null);
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.endsWith('.html') && !href.includes('?')) {
@@ -73,21 +57,37 @@
             }
         });
 
-        function bindWishClick(item) {
-            item.addEventListener('click', () => {
-                const star = item.querySelector('.wish-star');
-                const isLit = star.classList.contains('lit');
-                const wish = item.dataset.wish;
-                if (isLit) {
-                    star.classList.remove('lit'); star.textContent = '☆'; item.dataset.lit = 'false';
-                } else {
-                    star.classList.add('lit'); star.textContent = '★'; item.dataset.lit = 'true';
-                    spawnHearts(item);
-                }
-                Online.send({ type: 'wish_toggle', wish: wish, lit: !isLit, timestamp: Date.now() });
-            });
+        const defaultWishes = [
+            { text: '一起看一次日出', lit: false },
+            { text: '一起养一只猫', lit: false },
+            { text: '去看一次海', lit: false },
+            { text: '去迪士尼看烟花', lit: false },
+            { text: '一起过下个七夕', lit: false }
+        ];
+        let wishes = JSON.parse(localStorage.getItem('wishes') || 'null') || defaultWishes;
+        function saveWishes() { localStorage.setItem('wishes', JSON.stringify(wishes)); }
+        function updateStats() {
+            const lit = wishes.filter(w => w.lit).length;
+            document.getElementById('litCount').textContent = lit;
+            document.getElementById('totalCount').textContent = wishes.length;
         }
-
+        function renderWishes() {
+            const list = document.getElementById('wishList');
+            list.innerHTML = wishes.map((w, idx) =>
+                '<div class="wish-item" data-idx="' + idx + '"><span class="wish-star ' + (w.lit ? 'lit' : '') + '">' + (w.lit ? '★' : '☆') + '</span><span class="wish-text">' + escapeHtml(w.text) + '</span></div>'
+            ).join('');
+            list.querySelectorAll('.wish-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const idx = parseInt(item.dataset.idx);
+                    wishes[idx].lit = !wishes[idx].lit;
+                    saveWishes(); renderWishes(); updateStats();
+                    if (wishes[idx].lit) spawnHearts(item);
+                    Online.send({ type: 'wish_toggle', index: idx, lit: wishes[idx].lit, timestamp: Date.now() });
+                });
+            });
+            updateStats();
+        }
+        function escapeHtml(s) { return s.replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
         function spawnHearts(element) {
             const rect = element.getBoundingClientRect();
             const x = rect.left + rect.width / 2;
@@ -104,56 +104,38 @@
                 setTimeout(() => heart.remove(), 1500);
             }
         }
-
-        document.querySelectorAll('.wish-item').forEach(bindWishClick);
+        renderWishes();
 
         document.getElementById('addWishBtn').addEventListener('click', () => {
             const input = document.getElementById('newWishInput');
             const text = input.value.trim();
-            if (text) { addWishItem(text, false, true); input.value = ''; }
-        });
-
-        function addWishItem(text, lit, broadcast) {
-            const wishList = document.getElementById('wishList');
-            const newItem = document.createElement('div');
-            newItem.className = 'wish-item';
-            newItem.dataset.wish = text;
-            newItem.dataset.lit = lit ? 'true' : 'false';
-            newItem.innerHTML = '<span class="wish-star ' + (lit ? 'lit' : '') + '">' + (lit ? '★' : '☆') + '</span><span class="wish-text">' + text + '</span>';
-            wishList.appendChild(newItem);
-            bindWishClick(newItem);
-            if (broadcast) {
-                Online.send({ type: 'wish_add', wish: text, timestamp: Date.now() });
+            if (text) {
+                wishes.push({ text: text, lit: false });
+                saveWishes(); renderWishes();
+                input.value = '';
+                Online.send({ type: 'wish_add', text: text, timestamp: Date.now() });
             }
-        }
-
+        });
         document.getElementById('newWishInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') document.getElementById('addWishBtn').click();
         });
 
         Online.onMessage('wish_toggle', (data) => {
-            document.querySelectorAll('.wish-item').forEach(item => {
-                if (item.dataset.wish === data.wish) {
-                    const star = item.querySelector('.wish-star');
-                    if (data.lit) {
-                        star.classList.add('lit'); star.textContent = '★'; item.dataset.lit = 'true'; spawnHearts(item);
-                    } else {
-                        star.classList.remove('lit'); star.textContent = '☆'; item.dataset.lit = 'false';
-                    }
+            if (data.index !== undefined && wishes[data.index]) {
+                wishes[data.index].lit = data.lit;
+                saveWishes(); renderWishes();
+                if (data.lit) {
+                    const items = document.querySelectorAll('.wish-item');
+                    if (items[data.index]) spawnHearts(items[data.index]);
                 }
-            });
+            }
         });
-
         Online.onMessage('wish_add', (data) => {
-            if (data.wish) addWishItem(data.wish, false, false);
+            if (data.text) { wishes.push({ text: data.text, lit: false }); saveWishes(); renderWishes(); }
         });
-
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
-            if (indicator) {
-                const text = indicator.querySelector('.online-text');
-                if (text) text.textContent = 'TA在 ' + data.page;
-            }
+            if (indicator) { const text = indicator.querySelector('.online-text'); if (text) text.textContent = 'TA在 ' + data.page; }
         });
     })();
     </script>
