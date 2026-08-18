@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#05051f">
     <title>📷 回忆册 · 星河之旅</title>
-    <link rel="stylesheet" href="../css/style.css?v4">
+    <link rel="stylesheet" href="../css/style.css?v6">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -22,32 +22,11 @@
     <div class="scene-content">
         <div class="scene-title">回忆册</div>
         <div class="scene-desc">拍立得照片墙 · 点击翻转看心情</div>
-        <div class="photo-grid">
-            <div class="photo-card" data-idx="0" style="transform: rotate(-6deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">第一次合照</span></div>
-                <div class="photo-back">那天我们都笑得很傻，但我好喜欢。</div>
-            </div>
-            <div class="photo-card" data-idx="1" style="transform: rotate(4deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">海边日落</span></div>
-                <div class="photo-back">海浪声和你的笑声，是夏天最美的旋律。</div>
-            </div>
-            <div class="photo-card" data-idx="2" style="transform: rotate(-2deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">一起做饭</span></div>
-                <div class="photo-back">虽然你切菜的样子有点笨拙，但很可爱。</div>
-            </div>
-            <div class="photo-card" data-idx="3" style="transform: rotate(7deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">撸猫日常</span></div>
-                <div class="photo-back">以后我们一起养一只猫吧。</div>
-            </div>
-            <div class="photo-card" data-idx="4" style="transform: rotate(-5deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">游乐园</span></div>
-                <div class="photo-back">你在旋转木马上笑得像个小孩子。</div>
-            </div>
-            <div class="photo-card" data-idx="5" style="transform: rotate(3deg);">
-                <div class="photo-front"><div class="photo-placeholder"></div><span class="photo-caption">深夜电影</span></div>
-                <div class="photo-back">电影很精彩，但你靠在我肩上的时候，我什么都没看进去。</div>
-            </div>
+        <div class="photo-toolbar">
+            <button class="photo-upload-btn" id="photoUploadBtn">📷 上传新照片</button>
+            <input type="file" id="photoFileInput" accept="image/*" style="display:none;">
         </div>
+        <div class="photo-grid" id="photoGrid"></div>
     </div>
     <div class="mobile-tab" id="mobileTab">
         <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
@@ -56,28 +35,182 @@
         <a href="love.html"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-    <script src="../js/main.js?v5"></script>
-    <script src="../js/online.js?v5"></script>
+
+    <!-- 编辑/上传弹窗 -->
+    <div class="photo-modal" id="photoModal" style="display:none;">
+        <div class="photo-modal-content">
+            <div class="photo-modal-title">📷 编辑照片</div>
+            <div class="photo-modal-preview" id="photoModalPreview"></div>
+            <input type="text" class="photo-modal-input" id="photoCaption" placeholder="给照片起个名字（20字内）" maxlength="20">
+            <textarea class="photo-modal-textarea" id="photoBack" placeholder="背后的心情留言（80字内）" maxlength="80" rows="3"></textarea>
+            <div class="photo-modal-actions">
+                <button class="photo-modal-btn photo-modal-delete" id="photoDeleteBtn">删除</button>
+                <span style="flex:1;"></span>
+                <button class="photo-modal-btn photo-modal-cancel" id="photoCancelBtn">取消</button>
+                <button class="photo-modal-btn photo-modal-save" id="photoSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js?v6"></script>
+    <script src="../js/online.js?v6"></script>
     <script>
     (function() {
         'use strict';
-            }
-        });
+        const DEFAULTS = [
+            { caption: '第一次合照', back: '那天我们都笑得很傻，但我好喜欢。' },
+            { caption: '海边日落', back: '海浪声和你的笑声，是夏天最美的旋律。' },
+            { caption: '一起做饭', back: '虽然你切菜的样子有点笨拙，但很可爱。' },
+            { caption: '撸猫日常', back: '以后我们一起养一只猫吧。' },
+            { caption: '游乐园', back: '你在旋转木马上笑得像个小孩子。' },
+            { caption: '深夜电影', back: '电影很精彩，但你靠在我肩上的时候，我什么都没看进去。' }
+        ];
+        const ROATE = [-6, 4, -2, 7, -5, 3];
+        let photos = []; // [{caption, back, src?}]
 
-        document.querySelectorAll('.photo-card').forEach(card => {
-            card.addEventListener('click', () => {
-                card.classList.toggle('flipped');
-                const idx = parseInt(card.dataset.idx);
-                const isFlipped = card.classList.contains('flipped');
-                Online.send({
-                    type: 'photo_flip',
-                    index: idx,
-                    flipped: isFlipped,
-                    timestamp: Date.now()
+        function loadPhotos() {
+            try { photos = JSON.parse(localStorage.getItem('photos') || '[]'); } catch (e) { photos = []; }
+            if (photos.length === 0) {
+                photos = DEFAULTS.map((d, i) => ({ caption: d.caption, back: d.back, src: null }));
+                localStorage.setItem('photos', JSON.stringify(photos));
+            }
+        }
+        function savePhotos() { localStorage.setItem('photos', JSON.stringify(photos)); }
+
+        function renderPhotos() {
+            const grid = document.getElementById('photoGrid');
+            grid.innerHTML = photos.map((p, i) => {
+                const rot = ROATE[i % ROATE.length];
+                const front = p.src
+                    ? '<img class="photo-img" src="' + p.src + '" alt="">'
+                    : '<div class="photo-placeholder"></div>';
+                return '<div class="photo-card" data-idx="' + i + '" style="transform: rotate(' + rot + 'deg);">' +
+                    '<div class="photo-front">' + front + '<span class="photo-caption">' + escapeHtml(p.caption || '') + '</span></div>' +
+                    '<div class="photo-back">' + escapeHtml(p.back || '') + '</div>' +
+                    '<div class="photo-edit-btn" data-idx="' + i + '" title="编辑/上传">✎</div>' +
+                '</div>';
+            }).join('');
+            // 点击翻转
+            grid.querySelectorAll('.photo-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('photo-edit-btn')) return; // 编辑按钮不触发翻转
+                    card.classList.toggle('flipped');
+                    Online.send({ type: 'photo_flip', index: parseInt(card.dataset.idx), flipped: card.classList.contains('flipped'), timestamp: Date.now() });
+                });
+                card.querySelector('.photo-edit-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditModal(parseInt(card.dataset.idx));
                 });
             });
+        }
+
+        function escapeHtml(s) { return (s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+        // 编辑弹窗
+        let editIdx = -1;
+        let pendingFileSrc = null;
+        function openEditModal(idx) {
+            editIdx = idx;
+            const p = photos[idx] || { caption: '', back: '', src: null };
+            document.getElementById('photoCaption').value = p.caption || '';
+            document.getElementById('photoBack').value = p.back || '';
+            pendingFileSrc = p.src || null;
+            const preview = document.getElementById('photoModalPreview');
+            preview.innerHTML = pendingFileSrc ? '<img src="' + pendingFileSrc + '" alt="">' : '<div class="photo-placeholder"></div>';
+            document.getElementById('photoModal').style.display = 'flex';
+        }
+        function closeEditModal() {
+            document.getElementById('photoModal').style.display = 'none';
+            editIdx = -1;
+            pendingFileSrc = null;
+        }
+
+        // 上传新照片
+        document.getElementById('photoUploadBtn').addEventListener('click', () => {
+            document.getElementById('photoFileInput').click();
+        });
+        document.getElementById('photoFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert('图片大小不能超过 2MB'); e.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                // 自动压缩到宽度 600px 以内
+                compressImage(ev.target.result, 600, function(comp) {
+                    // 新增一张照片
+                    const newPhoto = { caption: '', back: '', src: comp };
+                    photos.push(newPhoto);
+                    savePhotos();
+                    renderPhotos();
+                    openEditModal(photos.length - 1);
+                    Online.send({ type: 'photo_update', photos: photos, timestamp: Date.now() });
+                });
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
         });
 
+        function compressImage(dataUrl, maxWidth, cb) {
+            const img = new Image();
+            img.onload = function() {
+                if (img.width <= maxWidth) { cb(dataUrl); return; }
+                const scale = maxWidth / img.width;
+                const canvas = document.createElement('canvas');
+                canvas.width = maxWidth;
+                canvas.height = img.height * scale;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                cb(canvas.toDataURL('image/jpeg', 0.82));
+            };
+            img.onerror = function() { cb(dataUrl); };
+            img.src = dataUrl;
+        }
+
+        // 弹窗按钮
+        document.getElementById('photoCancelBtn').addEventListener('click', closeEditModal);
+        document.getElementById('photoModal').addEventListener('click', (e) => {
+            if (e.target.id === 'photoModal') closeEditModal();
+        });
+        document.getElementById('photoSaveBtn').addEventListener('click', () => {
+            if (editIdx < 0) return;
+            photos[editIdx].caption = document.getElementById('photoCaption').value.trim();
+            photos[editIdx].back = document.getElementById('photoBack').value.trim();
+            photos[editIdx].src = pendingFileSrc;
+            savePhotos();
+            renderPhotos();
+            closeEditModal();
+            Online.send({ type: 'photo_update', photos: photos, timestamp: Date.now() });
+        });
+        document.getElementById('photoDeleteBtn').addEventListener('click', () => {
+            if (editIdx < 0) return;
+            if (!confirm('确定删除这张照片吗？')) return;
+            photos.splice(editIdx, 1);
+            savePhotos();
+            renderPhotos();
+            closeEditModal();
+            Online.send({ type: 'photo_update', photos: photos, timestamp: Date.now() });
+        });
+
+        // 联机同步
+        Online.onMessage('photo_update', (data) => {
+            if (data.photos && Array.isArray(data.photos)) {
+                photos = data.photos;
+                savePhotos();
+                renderPhotos();
+            }
+        });
+        Online.onMessage('sys', (data) => {
+            if (data.action === 'identify' || data.action === 'presence') {
+                Online.send({ type: 'photo_sync', photos: photos, timestamp: Date.now() });
+            }
+        });
+        Online.onMessage('photo_sync', (data) => {
+            if (data.photos && Array.isArray(data.photos) && data.photos.length > 0) {
+                photos = data.photos;
+                savePhotos();
+                renderPhotos();
+            }
+        });
         Online.onMessage('photo_flip', (data) => {
             const cards = document.querySelectorAll('.photo-card');
             if (cards[data.index]) {
@@ -87,7 +220,6 @@
                 setTimeout(() => { cards[data.index].style.boxShadow = ''; }, 1500);
             }
         });
-
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
             if (indicator) {
@@ -95,6 +227,9 @@
                 if (text) text.textContent = 'TA在 ' + data.page;
             }
         });
+
+        loadPhotos();
+        renderPhotos();
     })();
     </script>
 </body>
