@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
   ============================================
-  二级页面：告白屋（情话罐）
+  二级页面：告白屋（情话罐）— 联机版
   ============================================
-  功能：点击罐子抽取情话，自动收藏，可删除收藏
-  数据：10 条情话（可扩展）
+  功能：点击罐子抽取情话，自动收藏，可删除
+  联机：实时同步情话输入，对方逐字看到
   ============================================
 -->
 <html lang="zh-CN">
@@ -51,9 +51,21 @@
             <!-- 当前抽取的情话显示区 -->
             <div id="loveNoteContainer"></div>
 
+            <!-- 联机：自定义情话输入 -->
+            <div class="love-input-area">
+                <textarea class="love-input" id="loveInput" placeholder="想对TA说的话...（对方会实时看到哦）" maxlength="100" rows="2"></textarea>
+            </div>
+
+            <!-- 对方正在输入的实时显示 -->
+            <div class="partner-typing" id="partnerTyping" style="display:none;">
+                <span class="partner-typing-label">TA 正在写：</span>
+                <span class="partner-typing-text" id="partnerTypingText"></span>
+                <span class="partner-typing-cursor">|</span>
+            </div>
+
             <!-- 收藏区 -->
             <div class="collection-area" id="collectionArea">
-                <h4 style="color:#ffd700; margin-bottom:8px;">💛 我的收藏</h4>
+                <h4 style="color:#ffd700; margin-bottom:8px;">💛 我们的收藏</h4>
                 <div id="collectedNotes"></div>
             </div>
         </div>
@@ -69,9 +81,29 @@
     </div>
 
     <script src="../js/main.js"></script>
+    <script src="../js/online.js"></script>
     <script>
     (function() {
         'use strict';
+
+        /* ---------- 模块：联机初始化 ---------- */
+        const room = Online.getRoomId();
+        if (room) {
+            Online.connect(room, null);
+            Online.notifyPageChange();
+        }
+
+        // 导航链接加 room 参数
+        document.querySelectorAll('a[href]').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href.endsWith('.html') && !href.includes('?')) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const r = Online.getRoomId();
+                    window.location.href = href + (r ? '?room=' + r : '');
+                });
+            }
+        });
 
         /* ---------- 模块：情话数据 ---------- */
         const loveNotes = [
@@ -106,6 +138,14 @@
             // 自动收藏
             collectedNotes.push(note);
             updateCollectedNotes();
+
+            // 联机同步：发送情话
+            Online.send({
+                type: 'love_note',
+                action: 'add',
+                note: note,
+                timestamp: Date.now()
+            });
         });
 
         /* ---------- 模块：更新收藏列表 ---------- */
@@ -123,14 +163,106 @@
             container.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.dataset.idx);
+                    const note = collectedNotes[idx];
                     collectedNotes.splice(idx, 1);
                     updateCollectedNotes();
+                    // 联机同步：删除情话
+                    Online.send({
+                        type: 'love_note',
+                        action: 'remove',
+                        note: note,
+                        timestamp: Date.now()
+                    });
                 });
             });
         }
 
         // 初始化收藏列表
         updateCollectedNotes();
+
+        /* ---------- 模块：自定义情话实时同步 ---------- */
+        const loveInput = document.getElementById('loveInput');
+        let typingTimer = null;
+
+        loveInput.addEventListener('input', () => {
+            clearTimeout(typingTimer);
+            const text = loveInput.value;
+            // 实时发送打字内容
+            Online.send({
+                type: 'typing',
+                text: text,
+                timestamp: Date.now()
+            });
+
+            // 停止输入 2 秒后，发送最终内容并清空输入框
+            typingTimer = setTimeout(() => {
+                if (text.trim()) {
+                    collectedNotes.push(text.trim());
+                    updateCollectedNotes();
+                    // 持久化
+                    Online.send({
+                        type: 'persist',
+                        store: 'love_notes',
+                        value: collectedNotes
+                    });
+                    loveInput.value = '';
+                    // 通知对方输入完成
+                    Online.send({
+                        type: 'typing',
+                        text: '',
+                        timestamp: Date.now()
+                    });
+                }
+            }, 2000);
+        });
+
+        /* ---------- 模块：接收对方消息 ---------- */
+        // 对方打字中
+        Online.onMessage('typing', (data) => {
+            const typingEl = document.getElementById('partnerTyping');
+            const textEl = document.getElementById('partnerTypingText');
+            if (data.text) {
+                typingEl.style.display = 'flex';
+                textEl.textContent = data.text;
+            } else {
+                typingEl.style.display = 'none';
+            }
+        });
+
+        // 对方抽情话
+        Online.onMessage('love_note', (data) => {
+            if (data.action === 'add' && data.note) {
+                // 对方抽的情话也显示
+                const container = document.getElementById('loveNoteContainer');
+                container.innerHTML = `<div class="love-note" style="border-color:#ff6b9d;">${data.note}</div>`;
+                collectedNotes.push(data.note);
+                updateCollectedNotes();
+            } else if (data.action === 'remove' && data.note) {
+                const idx = collectedNotes.indexOf(data.note);
+                if (idx > -1) {
+                    collectedNotes.splice(idx, 1);
+                    updateCollectedNotes();
+                }
+            }
+        });
+
+        // 对方页面切换
+        Online.onMessage('page_change', (data) => {
+            const indicator = document.getElementById('onlineIndicator');
+            if (indicator) {
+                const text = indicator.querySelector('.online-text');
+                if (text) text.textContent = 'TA在 ' + data.page;
+            }
+        });
+
+        // 加载持久化数据
+        Online.onMessage('load_result', (data) => {
+            if (data.store === 'love_notes' && data.value && Array.isArray(data.value)) {
+                collectedNotes.length = 0;
+                collectedNotes.push(...data.value);
+                updateCollectedNotes();
+            }
+        });
     })();
     </script>
 </body>

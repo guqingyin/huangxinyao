@@ -1,15 +1,9 @@
 <!DOCTYPE html>
 <!--
   ============================================
-  星河之旅 · 七夕特典 — 一级首页
+  星河之旅 · 七夕特典 — 一级首页（联机版）
   ============================================
-  功能：星河入口，展示星空导航，链接到各二级页面
-  二级页面：
-    - pages/meet.html      初见馆（时间线）
-    - pages/memories.html   回忆册（照片墙）
-    - pages/love.html       告白屋（情话罐）
-    - pages/wish.html       心愿星（心愿列表）
-    - pages/secret.html     秘密匣（彩蛋）
+  功能：星河入口 + 房间创建/加入
   ============================================
 -->
 <html lang="zh-CN">
@@ -49,27 +43,59 @@
             <div class="moon" id="moon">
                 <span class="moon-text">🌙</span>
             </div>
-            <!-- 星星导航 → 二级页面 -->
-            <a href="pages/meet.html" class="star-item star-1">
+            <!-- 星星导航 → 二级页面（带 room 参数传递） -->
+            <a href="pages/meet.html" class="star-item star-1" data-page="meet">
                 ✨
                 <span class="star-label">初见馆</span>
             </a>
-            <a href="pages/memories.html" class="star-item star-2">
+            <a href="pages/memories.html" class="star-item star-2" data-page="memories">
                 ✨
                 <span class="star-label">回忆册</span>
             </a>
-            <a href="pages/love.html" class="star-item star-3">
+            <a href="pages/love.html" class="star-item star-3" data-page="love">
                 ✨
                 <span class="star-label">告白屋</span>
             </a>
-            <a href="pages/wish.html" class="star-item star-4">
+            <a href="pages/wish.html" class="star-item star-4" data-page="wish">
                 ✨
                 <span class="star-label">心愿星</span>
             </a>
-            <a href="pages/secret.html" class="star-item star-5">
+            <a href="pages/secret.html" class="star-item star-5" data-page="secret">
                 ✨
                 <span class="star-label">秘密匣</span>
             </a>
+        </div>
+
+        <!-- 联机入口 -->
+        <div class="room-panel" id="roomPanel">
+            <div class="room-panel-title">💕 双人联机</div>
+            <div class="room-panel-desc">一起探索星河</div>
+            <div class="room-buttons">
+                <button class="room-btn create-btn" id="createRoomBtn">创建房间</button>
+                <button class="room-btn join-btn" id="joinRoomBtn">加入房间</button>
+            </div>
+            <!-- 加入房间输入区（默认隐藏） -->
+            <div class="join-form" id="joinForm" style="display:none;">
+                <input type="text" class="room-input" id="roomInput" placeholder="房间号" maxlength="6">
+                <input type="password" class="room-input" id="passcodeInput" placeholder="邀请码" maxlength="4">
+                <button class="room-btn join-confirm-btn" id="joinConfirmBtn">进入</button>
+            </div>
+            <!-- 创建房间信息展示区（默认隐藏） -->
+            <div class="room-info" id="roomInfo" style="display:none;">
+                <div class="room-info-row">
+                    <span class="room-info-label">房间号</span>
+                    <span class="room-info-value" id="roomInfoId">-</span>
+                </div>
+                <div class="room-info-row">
+                    <span class="room-info-label">邀请码</span>
+                    <span class="room-info-value" id="roomInfoPasscode">-</span>
+                </div>
+                <div class="room-info-row">
+                    <span class="room-info-label">链接</span>
+                    <span class="room-info-value room-info-link" id="roomInfoLink">复制</span>
+                </div>
+                <div class="room-info-tip">把房间号和邀请码发给TA吧～</div>
+            </div>
         </div>
     </div>
 
@@ -83,6 +109,7 @@
     </div>
 
     <script src="js/main.js"></script>
+    <script src="js/online.js"></script>
     <script>
     (function() {
         'use strict';
@@ -97,10 +124,137 @@
                 moonClickCount++;
                 if (moonClickCount >= 5) {
                     moonClickCount = 0;
-                    window.location.href = 'pages/secret.html';
+                    navigateTo('secret');
                 }
             });
         }
+
+        /* ---------- 模块：联机房间管理 ---------- */
+
+        // 导航辅助：携带 room 参数跳转
+        function navigateTo(page) {
+            const room = Online.getRoomId();
+            if (room) {
+                window.location.href = (page === 'index' ? 'index.html' : 'pages/' + page + '.html') + '?room=' + room;
+            } else {
+                window.location.href = (page === 'index' ? 'index.html' : 'pages/' + page + '.html');
+            }
+        }
+
+        // 星星导航：拦截点击，加上 room 参数
+        document.querySelectorAll('.star-item').forEach(star => {
+            star.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = star.dataset.page;
+                navigateTo(page);
+            });
+        });
+
+        // 移动端导航：拦截点击，加上 room 参数
+        document.querySelectorAll('.mobile-tab a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const href = link.getAttribute('href');
+                const room = Online.getRoomId();
+                if (room && href !== 'index.html') {
+                    window.location.href = href + '?room=' + room;
+                } else if (room && href === 'index.html') {
+                    window.location.href = href + '?room=' + room;
+                } else {
+                    window.location.href = href;
+                }
+            });
+        });
+
+        /* ---------- 模块：创建房间 ---------- */
+        document.getElementById('createRoomBtn').addEventListener('click', async () => {
+            const roomId = Online.generateRoomId();
+            const passcode = Online.generatePasscode();
+            
+            // 显示房间信息
+            document.getElementById('roomInfoId').textContent = roomId;
+            document.getElementById('roomInfoPasscode').textContent = passcode;
+            const link = window.location.origin + window.location.pathname + '?room=' + roomId;
+            document.getElementById('roomInfoLink').textContent = '点击复制';
+            document.getElementById('roomInfoLink').dataset.link = link;
+            
+            document.getElementById('roomInfo').style.display = 'block';
+            document.getElementById('joinForm').style.display = 'none';
+
+            // 连接房间
+            await Online.connect(roomId, passcode);
+
+            // 复制链接
+            document.getElementById('roomInfoLink').addEventListener('click', () => {
+                const text = document.getElementById('roomInfoLink').dataset.link;
+                navigator.clipboard.writeText(text).then(() => {
+                    document.getElementById('roomInfoLink').textContent = '已复制!';
+                    setTimeout(() => {
+                        document.getElementById('roomInfoLink').textContent = '点击复制';
+                    }, 2000);
+                });
+            });
+        });
+
+        /* ---------- 模块：加入房间 ---------- */
+        document.getElementById('joinRoomBtn').addEventListener('click', () => {
+            document.getElementById('joinForm').style.display = 'flex';
+            document.getElementById('roomInfo').style.display = 'none';
+            document.getElementById('roomInput').focus();
+        });
+
+        document.getElementById('joinConfirmBtn').addEventListener('click', async () => {
+            const roomId = document.getElementById('roomInput').value.trim();
+            const passcode = document.getElementById('passcodeInput').value.trim();
+            if (roomId && passcode) {
+                await Online.connect(roomId, passcode);
+                // 连接成功后更新 URL
+                const newUrl = window.location.pathname + '?room=' + roomId;
+                window.history.replaceState({}, '', newUrl);
+                // 隐藏面板
+                document.getElementById('joinForm').style.display = 'none';
+            } else {
+                alert('请输入房间号和邀请码');
+            }
+        });
+
+        // 回车提交
+        document.getElementById('passcodeInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('joinConfirmBtn').click();
+            }
+        });
+
+        /* ---------- 模块：URL 已有 room 参数时自动连接 ---------- */
+        const existingRoom = Online.getRoomId();
+        if (existingRoom) {
+            // 隐藏创建/加入按钮，直接显示已连接状态
+            document.getElementById('createRoomBtn').style.display = 'none';
+            document.getElementById('joinRoomBtn').style.display = 'none';
+            // 不自动连接（需要邀请码验证），显示加入表单
+            document.getElementById('joinForm').style.display = 'flex';
+            document.getElementById('roomInput').value = existingRoom;
+            document.getElementById('passcodeInput').focus();
+        }
+
+        /* ---------- 模块：监听对方页面切换 ---------- */
+        Online.onMessage('page_change', (data) => {
+            const indicator = document.getElementById('onlineIndicator');
+            if (indicator) {
+                const text = indicator.querySelector('.online-text');
+                if (text && data.page) {
+                    const pageMap = {
+                        'index': '星河入口',
+                        'meet': '初见馆',
+                        'memories': '回忆册',
+                        'love': '告白屋',
+                        'wish': '心愿星',
+                        'secret': '秘密匣'
+                    };
+                    text.textContent = 'TA在 ' + (pageMap[data.page] || data.page);
+                }
+            }
+        });
     })();
     </script>
 </body>

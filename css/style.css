@@ -708,3 +708,219 @@ canvas {
         padding-bottom: calc(var(--safe-bottom) + 100px);
     }
 }
+/* ============================================
+   联机功能样式 — 追加到 style.css 末尾
+   ============================================ */
+
+/* ---------- 模块：联机房间面板 ---------- */
+.room-panel {
+    position: relative;
+    z-index: 10;
+    margin-top: 2rem;
+    padding: 20px;
+    background: rgba(10, 10, 40, 0.6);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 107, 157, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+    animation: sceneFadeIn 0.8s ease-out 0.3s both;
+}
+.room-panel-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #ff6b9d;
+    margin-bottom: 4px;
+    text-shadow: 0 0 15px rgba(255, 107, 157, 0.5);
+}
+.room-panel-desc {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+}
+.room-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.room-btn {
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.3), rgba(196, 77, 255, 0.3));
+    border: 1px solid rgba(255, 107, 157, 0.5);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+.room-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.5), rgba(196, 77, 255, 0.5));
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255, 107, 157, 0.4);
+}
+.room-btn:active {
+    transform: scale(0.95);
+}
+
+/* ---------- 模块：加入房间表单 ---------- */
+.join-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+.room-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 10px 15px;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    text-align: center;
+    -webkit-user-select: text;
+    user-select: text;
+}
+.room-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+.room-input:focus {
+    border-color: #ff6b9d;
+    box-shadow: 0 0 15px rgba(255, 107, 157, 0.3);
+}
+.join-confirm-btn {
+    background: linear-gradient(135deg, #ff6b9d, #c44dff);
+    border: none;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(255, 107, 157, 0.4);
+}
+
+/* ---------- 模块：房间信息展示 ---------- */
+.room-info {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(255, 215, 0, 0.08);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+.room-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 0.8rem;
+}
+.room-info-label {
+    color: rgba(255, 255, 255, 0.6);
+}
+.room-info-value {
+    color: #ffd700;
+    font-weight: bold;
+}
+.room-info-link {
+    cursor: pointer;
+    text-decoration: underline;
+    -webkit-user-select: text;
+    user-select: text;
+}
+.room-info-tip {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+}
+
+/* ---------- 模块：告白屋联机增强 ---------- */
+.love-input-area {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 10px;
+}
+.love-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 107, 157, 0.3);
+    border-radius: 12px;
+    padding: 10px 15px;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    -webkit-user-select: text;
+    user-select: text;
+}
+.love-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+.love-input:focus {
+    border-color: #ff6b9d;
+    box-shadow: 0 0 15px rgba(255, 107, 157, 0.3);
+}
+.partner-typing {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 8px;
+    padding: 10px 15px;
+    background: rgba(255, 107, 157, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 107, 157, 0.3);
+    font-size: 0.85rem;
+    align-items: center;
+    gap: 4px;
+    min-height: 20px;
+}
+.partner-typing-label {
+    color: #ff6b9d;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.partner-typing-text {
+    color: #fff;
+    flex: 1;
+    word-break: break-word;
+}
+.partner-typing-cursor {
+    color: #ff6b9d;
+    animation: blink 1s infinite;
+}
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* ---------- 模块：在线指示器动画 ---------- */
+.online-dot {
+    animation: dotPulse 2s infinite;
+}
+@keyframes dotPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+/* ---------- 模块：移动端联机面板适配 ---------- */
+@media (max-width: 768px) {
+    .room-panel {
+        margin-top: 1.5rem;
+        padding: 15px;
+    }
+    .room-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .room-btn {
+        width: 100%;
+    }
+    .love-input {
+        font-size: 0.8rem;
+    }
+}

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
   ============================================
-  二级页面：初见馆（时间线）
+  二级页面：初见馆（时间线）— 联机版
   ============================================
   功能：展示恋爱时间线，点击查看详情
-  数据：6 条时间线记录（可扩展）
+  联机：时间线点击同步，双方看到对方点击哪条
   ============================================
 -->
 <html lang="zh-CN">
@@ -87,23 +87,83 @@
     </div>
 
     <script src="../js/main.js"></script>
+    <script src="../js/online.js"></script>
     <script>
     (function() {
         'use strict';
 
+        /* ---------- 模块：联机初始化 ---------- */
+        const room = Online.getRoomId();
+        if (room) {
+            Online.connect(room, null);
+            Online.notifyPageChange();
+        }
+
+        // 导航链接加 room 参数
+        document.querySelectorAll('a[href]').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href.endsWith('.html') && !href.includes('?')) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const r = Online.getRoomId();
+                    window.location.href = href + (r ? '?room=' + r : '');
+                });
+            }
+        });
+
         /* ---------- 模块：时间线点击详情 ---------- */
-        document.querySelectorAll('.timeline-item').forEach(item => {
+        document.querySelectorAll('.timeline-item').forEach((item, idx) => {
             item.addEventListener('click', () => {
                 const detail = item.dataset.detail;
                 if (detail) {
-                    // 弹出轻提示（2 秒后自动消失）
+                    // 弹出轻提示
                     const tip = document.createElement('div');
                     tip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,40,0.95);color:#fff;padding:20px;border-radius:12px;z-index:1000;max-width:300px;text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.8);animation:popIn 0.3s ease;';
                     tip.textContent = detail;
                     document.body.appendChild(tip);
                     setTimeout(() => tip.remove(), 2000);
+
+                    // 联机同步：告诉对方我正在看哪条
+                    Online.send({
+                        type: 'timeline_view',
+                        index: idx,
+                        detail: detail,
+                        timestamp: Date.now()
+                    });
                 }
             });
+        });
+
+        /* ---------- 模块：接收对方消息 ---------- */
+        // 对方在看哪条时间线
+        Online.onMessage('timeline_view', (data) => {
+            const items = document.querySelectorAll('.timeline-item');
+            if (items[data.index]) {
+                // 高亮对方点击的条目
+                items.forEach(item => item.style.borderColor = '');
+                items[data.index].style.borderColor = '#ff6b9d';
+                items[data.index].style.boxShadow = '0 0 20px rgba(255,107,157,0.4)';
+
+                // 浮动提示
+                const tip = document.createElement('div');
+                tip.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,107,157,0.2);color:#ff6b9d;padding:8px 20px;border-radius:20px;font-size:0.8rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);';
+                tip.textContent = '👀 TA 正在看：' + items[data.index].querySelector('.timeline-text').textContent;
+                document.body.appendChild(tip);
+                setTimeout(() => {
+                    tip.style.transition = 'opacity 0.5s';
+                    tip.style.opacity = '0';
+                    setTimeout(() => tip.remove(), 500);
+                }, 2500);
+            }
+        });
+
+        // 对方页面切换
+        Online.onMessage('page_change', (data) => {
+            const indicator = document.getElementById('onlineIndicator');
+            if (indicator) {
+                const text = indicator.querySelector('.online-text');
+                if (text) text.textContent = 'TA在 ' + data.page;
+            }
         });
     })();
     </script>

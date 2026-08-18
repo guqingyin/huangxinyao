@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
   ============================================
-  二级页面：回忆册（照片墙）
+  二级页面：回忆册（照片墙）— 联机版
   ============================================
   功能：展示拍立得照片卡片，点击翻转查看背面文字
-  数据：6 张照片卡片（可扩展）
+  联机：对方翻转卡片时同步显示
   ============================================
 -->
 <html lang="zh-CN">
@@ -44,42 +44,42 @@
 
         <!-- 照片墙（点击翻转） -->
         <div class="photo-grid">
-            <div class="photo-card" style="transform: rotate(-6deg);">
+            <div class="photo-card" data-idx="0" style="transform: rotate(-6deg);">
                 <div class="photo-front">
                     <div class="photo-placeholder"></div>
                     <span class="photo-caption">第一次合照</span>
                 </div>
                 <div class="photo-back">那天我们都笑得很傻，但我好喜欢。</div>
             </div>
-            <div class="photo-card" style="transform: rotate(4deg);">
+            <div class="photo-card" data-idx="1" style="transform: rotate(4deg);">
                 <div class="photo-front">
                     <div class="photo-placeholder"></div>
                     <span class="photo-caption">海边日落</span>
                 </div>
                 <div class="photo-back">海浪声和你的笑声，是夏天最美的旋律。</div>
             </div>
-            <div class="photo-card" style="transform: rotate(-2deg);">
+            <div class="photo-card" data-idx="2" style="transform: rotate(-2deg);">
                 <div class="photo-front">
                     <div class="photo-placeholder"></div>
                     <span class="photo-caption">一起做饭</span>
                 </div>
                 <div class="photo-back">虽然你切菜的样子有点笨拙，但很可爱。</div>
             </div>
-            <div class="photo-card" style="transform: rotate(7deg);">
+            <div class="photo-card" data-idx="3" style="transform: rotate(7deg);">
                 <div class="photo-front">
                     <div class="photo-placeholder"></div>
                     <span class="photo-caption">撸猫日常</span>
                 </div>
                 <div class="photo-back">以后我们一起养一只猫吧。</div>
             </div>
-            <div class="photo-card" style="transform: rotate(-5deg);">
+            <div class="photo-card" data-idx="4" style="transform: rotate(-5deg);">
                 <div class="photo-front">
                     <div class="photo-placeholder"></div>
                     <span class="photo-caption">游乐园</span>
                 </div>
                 <div class="photo-back">你在旋转木马上笑得像个小孩子。</div>
             </div>
-            <div class="photo-card" style="transform: rotate(3deg);">
+            <div class="photo-card" data-idx="5" style="transform: rotate(3deg);">
                 <div class="photo-front">
                     <div class="photo-placeholder"></div>
                     <span class="photo-caption">深夜电影</span>
@@ -99,15 +99,72 @@
     </div>
 
     <script src="../js/main.js"></script>
+    <script src="../js/online.js"></script>
     <script>
     (function() {
         'use strict';
+
+        /* ---------- 模块：联机初始化 ---------- */
+        const room = Online.getRoomId();
+        if (room) {
+            Online.connect(room, null);
+            Online.notifyPageChange();
+        }
+
+        // 导航链接加 room 参数
+        document.querySelectorAll('a[href]').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href.endsWith('.html') && !href.includes('?')) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const r = Online.getRoomId();
+                    window.location.href = href + (r ? '?room=' + r : '');
+                });
+            }
+        });
 
         /* ---------- 模块：照片卡片翻转 ---------- */
         document.querySelectorAll('.photo-card').forEach(card => {
             card.addEventListener('click', () => {
                 card.classList.toggle('flipped');
+                const idx = card.dataset.idx;
+                const isFlipped = card.classList.contains('flipped');
+
+                // 联机同步
+                Online.send({
+                    type: 'photo_flip',
+                    index: parseInt(idx),
+                    flipped: isFlipped,
+                    timestamp: Date.now()
+                });
             });
+        });
+
+        /* ---------- 模块：接收对方消息 ---------- */
+        // 对方翻转卡片
+        Online.onMessage('photo_flip', (data) => {
+            const cards = document.querySelectorAll('.photo-card');
+            if (cards[data.index]) {
+                if (data.flipped) {
+                    cards[data.index].classList.add('flipped');
+                } else {
+                    cards[data.index].classList.remove('flipped');
+                }
+                // 高亮提示
+                cards[data.index].style.boxShadow = '0 0 30px rgba(255,107,157,0.6)';
+                setTimeout(() => {
+                    cards[data.index].style.boxShadow = '';
+                }, 1500);
+            }
+        });
+
+        // 对方页面切换
+        Online.onMessage('page_change', (data) => {
+            const indicator = document.getElementById('onlineIndicator');
+            if (indicator) {
+                const text = indicator.querySelector('.online-text');
+                if (text) text.textContent = 'TA在 ' + data.page;
+            }
         });
     })();
     </script>
