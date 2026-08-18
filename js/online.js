@@ -11,7 +11,8 @@
     const YAYA_PEER_ID = 'qixi-yaya';
     const YAOYAO_PEER_ID = 'qixi-yaoyao';
     const PASSWORD = '1234';
-    const BROADCAST_NAME = 'qixi-permanent-room';
+    let initDone = false;
+    const readyCallbacks = [];
 
     // ====== 状态 ======
     let currentIdentity = null;   // 'yaya' | 'yaoyao' | null
@@ -487,6 +488,7 @@
         isConnected: () => isConnected,
         isHost: () => false,           // 兼容
         getOtherName,
+        onReady: (cb) => { readyCallbacks.push(cb); if (initDone) cb(); },
         _debug: () => ({
             identity: currentIdentity,
             isConnected, peerOpen, hasChannel: !!channel,
@@ -509,6 +511,8 @@
             // 显示登录界面
             showLoginScreen();
         }
+        initDone = true;
+        readyCallbacks.forEach(cb => { try { cb(); } catch(e){} });
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

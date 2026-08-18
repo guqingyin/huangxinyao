@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>💖 星河之旅 · 七夕特典 💖</title>
-    <link rel="stylesheet" href="css/style.css?v7">
+    <link rel="stylesheet" href="css/style.css?v8">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -60,8 +60,8 @@
         <a href="pages/wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
 
-    <script src="js/main.js?v7"></script>
-    <script src="js/online.js?v7"></script>
+    <script src="js/main.js?v8"></script>
+    <script src="js/online.js?v8"></script>
     <script>
     (function() {
         'use strict';
@@ -185,7 +185,15 @@
         document.getElementById('messageInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') document.getElementById('messageSendBtn').click();
         });
-        renderMessages();
+        // 延迟首次渲染，等 Online 初始化完成（init 在 DOMContentLoaded 才执行）
+        function initialRender() {
+            renderMessages();
+        }
+        if (typeof Online.onReady === 'function') {
+            Online.onReady(initialRender);
+        } else {
+            setTimeout(initialRender, 0);
+        }
 
         /* ---------- 模块：联机消息监听 ---------- */
         Online.onMessage('page_change', (data) => {
