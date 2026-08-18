@@ -23,7 +23,8 @@
     }
     function getPageName() {
         const path = window.location.pathname;
-        const name = path.split('/').pop().replace('.html', '');
+        let name = path.split('/').filter(Boolean).pop() || 'index';
+        name = name.replace('.html', '');
         const pageMap = {
             'index': '星河入口', 'meet': '初见馆', 'memories': '回忆册',
             'love': '告白屋', 'wish': '心愿星', 'secret': '秘密匣'
