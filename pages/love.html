@@ -1,77 +1,44 @@
 <!DOCTYPE html>
-<!--
-  ============================================
-  二级页面：告白屋（情话罐）— 联机版
-  ============================================
-  功能：点击罐子抽取情话，自动收藏，可删除
-  联机：实时同步情话输入，对方逐字看到
-  ============================================
--->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>💌 告白屋 · 星河之旅</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-
-    <!-- Canvas 背景层 -->
     <canvas id="bg-canvas"></canvas>
     <canvas id="particle-canvas"></canvas>
     <canvas id="fx-canvas"></canvas>
-
-    <!-- 自定义光标 -->
     <div class="cursor-glow" id="cursorGlow"></div>
     <div class="cursor-ring" id="cursorRing"></div>
-
-    <!-- 返回首页按钮 -->
     <a href="../index.html" class="back-btn" title="返回首页">←</a>
-
-    <!-- 顶部导航栏 -->
     <div class="top-nav">
         <a href="../index.html" class="nav-btn" title="星河入口">🏠</a>
         <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
     </div>
-
-    <!-- 场景内容：告白屋 -->
     <div class="scene-content">
         <div class="scene-title">告白屋</div>
         <div class="scene-desc">抽一张情话纸条吧</div>
-
         <div class="jar-container">
-            <!-- 情话罐（点击抽取） -->
-            <div class="jar" id="loveJar">
-                <span class="jar-inner">🫙</span>
-            </div>
-
-            <!-- 当前抽取的情话显示区 -->
+            <div class="jar" id="loveJar"><span class="jar-inner">🫙</span></div>
             <div id="loveNoteContainer"></div>
-
-            <!-- 联机：自定义情话输入 -->
             <div class="love-input-area">
                 <textarea class="love-input" id="loveInput" placeholder="想对TA说的话...（对方会实时看到哦）" maxlength="100" rows="2"></textarea>
             </div>
-
-            <!-- 对方正在输入的实时显示 -->
             <div class="partner-typing" id="partnerTyping" style="display:none;">
                 <span class="partner-typing-label">TA 正在写：</span>
                 <span class="partner-typing-text" id="partnerTypingText"></span>
                 <span class="partner-typing-cursor">|</span>
             </div>
-
-            <!-- 收藏区 -->
             <div class="collection-area" id="collectionArea">
                 <h4 style="color:#ffd700; margin-bottom:8px;">💛 我们的收藏</h4>
                 <div id="collectedNotes"></div>
             </div>
         </div>
     </div>
-
-    <!-- 底部移动导航 -->
     <div class="mobile-tab" id="mobileTab">
         <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
         <a href="meet.html"><span class="tab-icon">📖</span>初见</a>
@@ -79,21 +46,17 @@
         <a href="love.html" class="active-tab"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-
     <script src="../js/main.js"></script>
     <script src="../js/online.js"></script>
     <script>
     (function() {
         'use strict';
 
-        /* ---------- 模块：联机初始化 ---------- */
         const room = Online.getRoomId();
         if (room) {
-            Online.connect(room, null);
-            Online.notifyPageChange();
+            Online.joinRoom(room, null);
         }
 
-        // 导航链接加 room 参数
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.endsWith('.html') && !href.includes('?')) {
@@ -105,7 +68,6 @@
             }
         });
 
-        /* ---------- 模块：情话数据 ---------- */
         const loveNotes = [
             '我喜欢你，像风走了八千里，不问归期。',
             '遇见你之后，我的世界变得好温柔。',
@@ -119,7 +81,6 @@
             '我想把所有的浪漫都给你。'
         ];
 
-        /* ---------- 模块：情话抽取与收藏 ---------- */
         let noteIndex = 0;
         const collectedNotes = [];
 
@@ -130,25 +91,12 @@
             }
             const note = loveNotes[noteIndex];
             noteIndex++;
-
-            // 显示当前情话
-            const container = document.getElementById('loveNoteContainer');
-            container.innerHTML = `<div class="love-note">${note}</div>`;
-
-            // 自动收藏
+            document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note">' + note + '</div>';
             collectedNotes.push(note);
             updateCollectedNotes();
-
-            // 联机同步：发送情话
-            Online.send({
-                type: 'love_note',
-                action: 'add',
-                note: note,
-                timestamp: Date.now()
-            });
+            Online.send({ type: 'love_note', action: 'add', note: note, timestamp: Date.now() });
         });
 
-        /* ---------- 模块：更新收藏列表 ---------- */
         function updateCollectedNotes() {
             const container = document.getElementById('collectedNotes');
             if (collectedNotes.length === 0) {
@@ -156,68 +104,36 @@
                 return;
             }
             container.innerHTML = collectedNotes.map((note, idx) =>
-                `<div class="collected-note"><span>${note}</span><button data-idx="${idx}" style="background:none;border:none;color:#ff6b9d;cursor:pointer;">✕</button></div>`
+                '<div class="collected-note"><span>' + note + '</span><button data-idx="' + idx + '" style="background:none;border:none;color:#ff6b9d;cursor:pointer;">✕</button></div>'
             ).join('');
-
-            // 绑定删除事件
             container.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.dataset.idx);
                     const note = collectedNotes[idx];
                     collectedNotes.splice(idx, 1);
                     updateCollectedNotes();
-                    // 联机同步：删除情话
-                    Online.send({
-                        type: 'love_note',
-                        action: 'remove',
-                        note: note,
-                        timestamp: Date.now()
-                    });
+                    Online.send({ type: 'love_note', action: 'remove', note: note, timestamp: Date.now() });
                 });
             });
         }
-
-        // 初始化收藏列表
         updateCollectedNotes();
 
-        /* ---------- 模块：自定义情话实时同步 ---------- */
         const loveInput = document.getElementById('loveInput');
         let typingTimer = null;
-
         loveInput.addEventListener('input', () => {
             clearTimeout(typingTimer);
             const text = loveInput.value;
-            // 实时发送打字内容
-            Online.send({
-                type: 'typing',
-                text: text,
-                timestamp: Date.now()
-            });
-
-            // 停止输入 2 秒后，发送最终内容并清空输入框
+            Online.send({ type: 'typing', text: text, timestamp: Date.now() });
             typingTimer = setTimeout(() => {
                 if (text.trim()) {
                     collectedNotes.push(text.trim());
                     updateCollectedNotes();
-                    // 持久化
-                    Online.send({
-                        type: 'persist',
-                        store: 'love_notes',
-                        value: collectedNotes
-                    });
                     loveInput.value = '';
-                    // 通知对方输入完成
-                    Online.send({
-                        type: 'typing',
-                        text: '',
-                        timestamp: Date.now()
-                    });
+                    Online.send({ type: 'typing', text: '', timestamp: Date.now() });
                 }
             }, 2000);
         });
 
-        /* ---------- 模块：接收对方消息 ---------- */
-        // 对方打字中
         Online.onMessage('typing', (data) => {
             const typingEl = document.getElementById('partnerTyping');
             const textEl = document.getElementById('partnerTypingText');
@@ -229,38 +145,22 @@
             }
         });
 
-        // 对方抽情话
         Online.onMessage('love_note', (data) => {
             if (data.action === 'add' && data.note) {
-                // 对方抽的情话也显示
-                const container = document.getElementById('loveNoteContainer');
-                container.innerHTML = `<div class="love-note" style="border-color:#ff6b9d;">${data.note}</div>`;
+                document.getElementById('loveNoteContainer').innerHTML = '<div class="love-note" style="border-color:#ff6b9d;">' + data.note + '</div>';
                 collectedNotes.push(data.note);
                 updateCollectedNotes();
             } else if (data.action === 'remove' && data.note) {
                 const idx = collectedNotes.indexOf(data.note);
-                if (idx > -1) {
-                    collectedNotes.splice(idx, 1);
-                    updateCollectedNotes();
-                }
+                if (idx > -1) { collectedNotes.splice(idx, 1); updateCollectedNotes(); }
             }
         });
 
-        // 对方页面切换
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
             if (indicator) {
                 const text = indicator.querySelector('.online-text');
                 if (text) text.textContent = 'TA在 ' + data.page;
-            }
-        });
-
-        // 加载持久化数据
-        Online.onMessage('load_result', (data) => {
-            if (data.store === 'love_notes' && data.value && Array.isArray(data.value)) {
-                collectedNotes.length = 0;
-                collectedNotes.push(...data.value);
-                updateCollectedNotes();
             }
         });
     })();

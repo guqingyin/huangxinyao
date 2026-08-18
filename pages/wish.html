@@ -1,79 +1,49 @@
 <!DOCTYPE html>
-<!--
-  ============================================
-  二级页面：心愿星（心愿列表）— 联机版
-  ============================================
-  功能：点击星星点亮/熄灭心愿，可添加新愿望
-  联机：心愿实时同步，两人点亮的星星共享
-  ============================================
--->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>⭐ 心愿星 · 星河之旅</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-
-    <!-- Canvas 背景层 -->
     <canvas id="bg-canvas"></canvas>
     <canvas id="particle-canvas"></canvas>
     <canvas id="fx-canvas"></canvas>
-
-    <!-- 自定义光标 -->
     <div class="cursor-glow" id="cursorGlow"></div>
     <div class="cursor-ring" id="cursorRing"></div>
-
-    <!-- 返回首页按钮 -->
     <a href="../index.html" class="back-btn" title="返回首页">←</a>
-
-    <!-- 顶部导航栏 -->
     <div class="top-nav">
         <a href="../index.html" class="nav-btn" title="星河入口">🏠</a>
         <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
     </div>
-
-    <!-- 场景内容：心愿星 -->
     <div class="scene-content">
         <div class="scene-title">心愿星</div>
         <div class="scene-desc">点击星星点亮心愿 · 添加新愿望</div>
-
-        <!-- 心愿列表 -->
         <div class="wish-list" id="wishList">
             <div class="wish-item" data-wish="一起看一次日出" data-lit="false">
-                <span class="wish-star">☆</span>
-                <span class="wish-text">一起看一次日出</span>
+                <span class="wish-star">☆</span><span class="wish-text">一起看一次日出</span>
             </div>
             <div class="wish-item" data-wish="一起养一只猫" data-lit="false">
-                <span class="wish-star">☆</span>
-                <span class="wish-text">一起养一只猫</span>
+                <span class="wish-star">☆</span><span class="wish-text">一起养一只猫</span>
             </div>
             <div class="wish-item" data-wish="去看一次海" data-lit="false">
-                <span class="wish-star">☆</span>
-                <span class="wish-text">去看一次海</span>
+                <span class="wish-star">☆</span><span class="wish-text">去看一次海</span>
             </div>
             <div class="wish-item" data-wish="去迪士尼看烟花" data-lit="false">
-                <span class="wish-star">☆</span>
-                <span class="wish-text">去迪士尼看烟花</span>
+                <span class="wish-star">☆</span><span class="wish-text">去迪士尼看烟花</span>
             </div>
             <div class="wish-item" data-wish="一起过下个七夕" data-lit="false">
-                <span class="wish-star">☆</span>
-                <span class="wish-text">一起过下个七夕</span>
+                <span class="wish-star">☆</span><span class="wish-text">一起过下个七夕</span>
             </div>
         </div>
-
-        <!-- 添加新愿望表单 -->
         <div class="add-wish-form">
             <input type="text" class="add-wish-input" id="newWishInput" placeholder="许下新的愿望..." maxlength="30">
             <button class="add-wish-btn" id="addWishBtn">许愿</button>
         </div>
     </div>
-
-    <!-- 底部移动导航 -->
     <div class="mobile-tab" id="mobileTab">
         <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
         <a href="meet.html"><span class="tab-icon">📖</span>初见</a>
@@ -81,21 +51,17 @@
         <a href="love.html"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html" class="active-tab"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-
     <script src="../js/main.js"></script>
     <script src="../js/online.js"></script>
     <script>
     (function() {
         'use strict';
 
-        /* ---------- 模块：联机初始化 ---------- */
         const room = Online.getRoomId();
         if (room) {
-            Online.connect(room, null);
-            Online.notifyPageChange();
+            Online.joinRoom(room, null);
         }
 
-        // 导航链接加 room 参数
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.endsWith('.html') && !href.includes('?')) {
@@ -107,36 +73,21 @@
             }
         });
 
-        /* ---------- 模块：心愿星星点亮/熄灭 ---------- */
         function bindWishClick(item) {
             item.addEventListener('click', () => {
                 const star = item.querySelector('.wish-star');
                 const isLit = star.classList.contains('lit');
                 const wish = item.dataset.wish;
-
                 if (isLit) {
-                    star.classList.remove('lit');
-                    star.textContent = '☆';
-                    item.dataset.lit = 'false';
+                    star.classList.remove('lit'); star.textContent = '☆'; item.dataset.lit = 'false';
                 } else {
-                    star.classList.add('lit');
-                    star.textContent = '★';
-                    item.dataset.lit = 'true';
-                    // 爱心粒子效果
+                    star.classList.add('lit'); star.textContent = '★'; item.dataset.lit = 'true';
                     spawnHearts(item);
                 }
-
-                // 联机同步
-                Online.send({
-                    type: 'wish_toggle',
-                    wish: wish,
-                    lit: !isLit,
-                    timestamp: Date.now()
-                });
+                Online.send({ type: 'wish_toggle', wish: wish, lit: !isLit, timestamp: Date.now() });
             });
         }
 
-        // 爱心粒子效果
         function spawnHearts(element) {
             const rect = element.getBoundingClientRect();
             const x = rect.left + rect.width / 2;
@@ -147,24 +98,19 @@
                 heart.style.cssText = 'position:fixed;left:' + x + 'px;top:' + y + 'px;font-size:' + (12 + Math.random() * 12) + 'px;pointer-events:none;z-index:1000;transition:all 1.5s ease-out;';
                 document.body.appendChild(heart);
                 requestAnimationFrame(() => {
-                    heart.style.transform = 'translate(' + (Math.random() * 100 - 50) + 'px, -' + (50 + Math.random() * 100) + 'px) scale(0)';
+                    heart.style.transform = 'translate(' + (Math.random() * 100 - 50) + 'px,-' + (50 + Math.random() * 100) + 'px) scale(0)';
                     heart.style.opacity = '0';
                 });
                 setTimeout(() => heart.remove(), 1500);
             }
         }
 
-        // 为所有预设心愿绑定点击事件
         document.querySelectorAll('.wish-item').forEach(bindWishClick);
 
-        /* ---------- 模块：添加新愿望 ---------- */
         document.getElementById('addWishBtn').addEventListener('click', () => {
             const input = document.getElementById('newWishInput');
             const text = input.value.trim();
-            if (text) {
-                addWishItem(text, false, true);
-                input.value = '';
-            }
+            if (text) { addWishItem(text, false, true); input.value = ''; }
         });
 
         function addWishItem(text, lit, broadcast) {
@@ -176,79 +122,37 @@
             newItem.innerHTML = '<span class="wish-star ' + (lit ? 'lit' : '') + '">' + (lit ? '★' : '☆') + '</span><span class="wish-text">' + text + '</span>';
             wishList.appendChild(newItem);
             bindWishClick(newItem);
-
             if (broadcast) {
-                // 联机同步：添加新愿望
-                Online.send({
-                    type: 'wish_add',
-                    wish: text,
-                    timestamp: Date.now()
-                });
-                // 持久化
-                const allWishes = Array.from(document.querySelectorAll('.wish-item')).map(item => ({
-                    wish: item.dataset.wish,
-                    lit: item.dataset.lit === 'true'
-                }));
-                Online.send({
-                    type: 'persist',
-                    store: 'wishes',
-                    value: allWishes
-                });
+                Online.send({ type: 'wish_add', wish: text, timestamp: Date.now() });
             }
         }
 
-        /* ---------- 模块：回车提交愿望 ---------- */
         document.getElementById('newWishInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('addWishBtn').click();
-            }
+            if (e.key === 'Enter') document.getElementById('addWishBtn').click();
         });
 
-        /* ---------- 模块：接收对方消息 ---------- */
-        // 对方点亮/熄灭心愿
         Online.onMessage('wish_toggle', (data) => {
-            const items = document.querySelectorAll('.wish-item');
-            items.forEach(item => {
+            document.querySelectorAll('.wish-item').forEach(item => {
                 if (item.dataset.wish === data.wish) {
                     const star = item.querySelector('.wish-star');
                     if (data.lit) {
-                        star.classList.add('lit');
-                        star.textContent = '★';
-                        item.dataset.lit = 'true';
-                        spawnHearts(item);
+                        star.classList.add('lit'); star.textContent = '★'; item.dataset.lit = 'true'; spawnHearts(item);
                     } else {
-                        star.classList.remove('lit');
-                        star.textContent = '☆';
-                        item.dataset.lit = 'false';
+                        star.classList.remove('lit'); star.textContent = '☆'; item.dataset.lit = 'false';
                     }
                 }
             });
         });
 
-        // 对方添加新愿望
         Online.onMessage('wish_add', (data) => {
-            if (data.wish) {
-                addWishItem(data.wish, false, false);
-            }
+            if (data.wish) addWishItem(data.wish, false, false);
         });
 
-        // 对方页面切换
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
             if (indicator) {
                 const text = indicator.querySelector('.online-text');
                 if (text) text.textContent = 'TA在 ' + data.page;
-            }
-        });
-
-        // 加载持久化数据
-        Online.onMessage('load_result', (data) => {
-            if (data.store === 'wishes' && data.value && Array.isArray(data.value)) {
-                const wishList = document.getElementById('wishList');
-                wishList.innerHTML = '';
-                data.value.forEach(item => {
-                    addWishItem(item.wish, item.lit, false);
-                });
             }
         });
     })();

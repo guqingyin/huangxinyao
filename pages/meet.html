@@ -1,83 +1,60 @@
 <!DOCTYPE html>
-<!--
-  ============================================
-  二级页面：初见馆（时间线）— 联机版
-  ============================================
-  功能：展示恋爱时间线，点击查看详情
-  联机：时间线点击同步，双方看到对方点击哪条
-  ============================================
--->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05051f">
     <title>📖 初见馆 · 星河之旅</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-
-    <!-- Canvas 背景层 -->
     <canvas id="bg-canvas"></canvas>
     <canvas id="particle-canvas"></canvas>
     <canvas id="fx-canvas"></canvas>
-
-    <!-- 自定义光标 -->
     <div class="cursor-glow" id="cursorGlow"></div>
     <div class="cursor-ring" id="cursorRing"></div>
-
-    <!-- 返回首页按钮 -->
     <a href="../index.html" class="back-btn" title="返回首页">←</a>
-
-    <!-- 顶部导航栏 -->
     <div class="top-nav">
         <a href="../index.html" class="nav-btn" title="星河入口">🏠</a>
         <div class="nav-btn music-btn" id="musicToggle" title="背景音乐">♪</div>
     </div>
-
-    <!-- 场景内容：初见馆 -->
     <div class="scene-content">
         <div class="scene-title">初见馆</div>
         <div class="scene-desc">我们的时间线</div>
-
-        <!-- 时间线列表（点击查看详情） -->
         <div class="timeline" id="timeline">
             <div class="timeline-item" data-date="2023.08.22" data-detail="那天阳光很好，你在人群中对我笑，我的世界就亮了。">
                 <span class="timeline-date">2026.08.22</span>
                 <span class="timeline-text">第一次相遇，你的笑容像星星✨</span>
                 <span class="timeline-arrow">›</span>
             </div>
-            <div class="timeline-item" data-date="2023.09.15" data-detail="第一次约会，我紧张得说不出话，你却很温柔。">
+            <div class="timeline-item" data-detail="第一次约会，我紧张得说不出话，你却很温柔。">
                 <span class="timeline-date">202*.09.15</span>
                 <span class="timeline-text">第一次约会，心跳加速💓</span>
                 <span class="timeline-arrow">›</span>
             </div>
-            <div class="timeline-item" data-date="2023.10.01" data-detail="你说愿意的那一刻，我觉得自己是全世界最幸福的人。">
+            <div class="timeline-item" data-detail="你说愿意的那一刻，我觉得自己是全世界最幸福的人。">
                 <span class="timeline-date">202*.10.01</span>
                 <span class="timeline-text">确定关系，激动到失眠🌙</span>
                 <span class="timeline-arrow">›</span>
             </div>
-            <div class="timeline-item" data-date="2023.12.25" data-detail="圣诞树下的拥抱，温暖了整个冬天。">
+            <div class="timeline-item" data-detail="圣诞树下的拥抱，温暖了整个冬天。">
                 <span class="timeline-date">202*.12.25</span>
                 <span class="timeline-text">一起过圣诞，交换礼物🎄</span>
                 <span class="timeline-arrow">›</span>
             </div>
-            <div class="timeline-item" data-date="2024.02.14" data-detail="烛光晚餐，你比所有玫瑰都好看。">
+            <div class="timeline-item" data-detail="烛光晚餐，你比所有玫瑰都好看。">
                 <span class="timeline-date">202*.02.14</span>
                 <span class="timeline-text">第一个情人节，浪漫晚餐🕯️</span>
                 <span class="timeline-arrow">›</span>
             </div>
-            <div class="timeline-item" data-date="2024.05.20" data-detail="一百天，一百个爱你的理由。">
+            <div class="timeline-item" data-detail="一百天，一百个爱你的理由。">
                 <span class="timeline-date">202*.05.20</span>
                 <span class="timeline-text">百天纪念，爱意满满💯</span>
                 <span class="timeline-arrow">›</span>
             </div>
         </div>
     </div>
-
-    <!-- 底部移动导航 -->
     <div class="mobile-tab" id="mobileTab">
         <a href="../index.html"><span class="tab-icon">🏠</span>首页</a>
         <a href="meet.html" class="active-tab"><span class="tab-icon">📖</span>初见</a>
@@ -85,18 +62,15 @@
         <a href="love.html"><span class="tab-icon">💌</span>告白</a>
         <a href="wish.html"><span class="tab-icon">⭐</span>心愿</a>
     </div>
-
     <script src="../js/main.js"></script>
     <script src="../js/online.js"></script>
     <script>
     (function() {
         'use strict';
 
-        /* ---------- 模块：联机初始化 ---------- */
         const room = Online.getRoomId();
         if (room) {
-            Online.connect(room, null);
-            Online.notifyPageChange();
+            Online.joinRoom(room, null);
         }
 
         // 导航链接加 room 参数
@@ -111,19 +85,17 @@
             }
         });
 
-        /* ---------- 模块：时间线点击详情 ---------- */
+        // 时间线点击
         document.querySelectorAll('.timeline-item').forEach((item, idx) => {
             item.addEventListener('click', () => {
                 const detail = item.dataset.detail;
                 if (detail) {
-                    // 弹出轻提示
                     const tip = document.createElement('div');
-                    tip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,40,0.95);color:#fff;padding:20px;border-radius:12px;z-index:1000;max-width:300px;text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.8);animation:popIn 0.3s ease;';
+                    tip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,40,0.95);color:#fff;padding:20px;border-radius:12px;z-index:1000;max-width:300px;text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.8);';
                     tip.textContent = detail;
                     document.body.appendChild(tip);
                     setTimeout(() => tip.remove(), 2000);
 
-                    // 联机同步：告诉对方我正在看哪条
                     Online.send({
                         type: 'timeline_view',
                         index: idx,
@@ -134,17 +106,14 @@
             });
         });
 
-        /* ---------- 模块：接收对方消息 ---------- */
         // 对方在看哪条时间线
         Online.onMessage('timeline_view', (data) => {
             const items = document.querySelectorAll('.timeline-item');
             if (items[data.index]) {
-                // 高亮对方点击的条目
-                items.forEach(item => item.style.borderColor = '');
+                items.forEach(item => { item.style.borderColor = ''; item.style.boxShadow = ''; });
                 items[data.index].style.borderColor = '#ff6b9d';
                 items[data.index].style.boxShadow = '0 0 20px rgba(255,107,157,0.4)';
 
-                // 浮动提示
                 const tip = document.createElement('div');
                 tip.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,107,157,0.2);color:#ff6b9d;padding:8px 20px;border-radius:20px;font-size:0.8rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);';
                 tip.textContent = '👀 TA 正在看：' + items[data.index].querySelector('.timeline-text').textContent;
@@ -157,7 +126,6 @@
             }
         });
 
-        // 对方页面切换
         Online.onMessage('page_change', (data) => {
             const indicator = document.getElementById('onlineIndicator');
             if (indicator) {

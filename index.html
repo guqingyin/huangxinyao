@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <!--
   ============================================
-  星河之旅 · 七夕特典 — 一级首页（联机版）
-  ============================================
-  功能：星河入口 + 房间创建/加入
+  星河之旅 · 七夕特典 — 一级首页（联机版 PeerJS）
+  无需服务端，P2P 直连
   ============================================
 -->
 <html lang="zh-CN">
@@ -76,7 +75,7 @@
             </div>
             <!-- 加入房间输入区（默认隐藏） -->
             <div class="join-form" id="joinForm" style="display:none;">
-                <input type="text" class="room-input" id="roomInput" placeholder="房间号" maxlength="6">
+                <input type="text" class="room-input" id="roomInput" placeholder="房间号" maxlength="20">
                 <input type="password" class="room-input" id="passcodeInput" placeholder="邀请码" maxlength="4">
                 <button class="room-btn join-confirm-btn" id="joinConfirmBtn">进入</button>
             </div>
@@ -92,7 +91,7 @@
                 </div>
                 <div class="room-info-row">
                     <span class="room-info-label">链接</span>
-                    <span class="room-info-value room-info-link" id="roomInfoLink">复制</span>
+                    <span class="room-info-value room-info-link" id="roomInfoLink">点击复制</span>
                 </div>
                 <div class="room-info-tip">把房间号和邀请码发给TA吧～</div>
             </div>
@@ -134,19 +133,15 @@
         // 导航辅助：携带 room 参数跳转
         function navigateTo(page) {
             const room = Online.getRoomId();
-            if (room) {
-                window.location.href = (page === 'index' ? 'index.html' : 'pages/' + page + '.html') + '?room=' + room;
-            } else {
-                window.location.href = (page === 'index' ? 'index.html' : 'pages/' + page + '.html');
-            }
+            const url = (page === 'index' ? 'index.html' : 'pages/' + page + '.html') + (room ? '?room=' + room : '');
+            window.location.href = url;
         }
 
         // 星星导航：拦截点击，加上 room 参数
         document.querySelectorAll('.star-item').forEach(star => {
             star.addEventListener('click', (e) => {
                 e.preventDefault();
-                const page = star.dataset.page;
-                navigateTo(page);
+                navigateTo(star.dataset.page);
             });
         });
 
@@ -156,33 +151,30 @@
                 e.preventDefault();
                 const href = link.getAttribute('href');
                 const room = Online.getRoomId();
-                if (room && href !== 'index.html') {
-                    window.location.href = href + '?room=' + room;
-                } else if (room && href === 'index.html') {
-                    window.location.href = href + '?room=' + room;
-                } else {
-                    window.location.href = href;
-                }
+                window.location.href = href + (room ? '?room=' + room : '');
             });
         });
 
-        /* ---------- 模块：创建房间 ---------- */
+        /* ---------- 模块：创建房间（Host） ---------- */
         document.getElementById('createRoomBtn').addEventListener('click', async () => {
             const roomId = Online.generateRoomId();
             const passcode = Online.generatePasscode();
-            
+
             // 显示房间信息
             document.getElementById('roomInfoId').textContent = roomId;
             document.getElementById('roomInfoPasscode').textContent = passcode;
             const link = window.location.origin + window.location.pathname + '?room=' + roomId;
-            document.getElementById('roomInfoLink').textContent = '点击复制';
             document.getElementById('roomInfoLink').dataset.link = link;
-            
+            document.getElementById('roomInfoLink').textContent = '点击复制';
+
             document.getElementById('roomInfo').style.display = 'block';
             document.getElementById('joinForm').style.display = 'none';
 
-            // 连接房间
-            await Online.connect(roomId, passcode);
+            // 创建房间（PeerJS Host）
+            await Online.createRoom(roomId, passcode);
+
+            // 更新 URL
+            window.history.replaceState({}, '', window.location.pathname + '?room=' + roomId);
 
             // 复制链接
             document.getElementById('roomInfoLink').addEventListener('click', () => {
@@ -196,7 +188,7 @@
             });
         });
 
-        /* ---------- 模块：加入房间 ---------- */
+        /* ---------- 模块：加入房间（Guest） ---------- */
         document.getElementById('joinRoomBtn').addEventListener('click', () => {
             document.getElementById('joinForm').style.display = 'flex';
             document.getElementById('roomInfo').style.display = 'none';
@@ -207,12 +199,12 @@
             const roomId = document.getElementById('roomInput').value.trim();
             const passcode = document.getElementById('passcodeInput').value.trim();
             if (roomId && passcode) {
-                await Online.connect(roomId, passcode);
-                // 连接成功后更新 URL
-                const newUrl = window.location.pathname + '?room=' + roomId;
-                window.history.replaceState({}, '', newUrl);
-                // 隐藏面板
+                document.getElementById('joinConfirmBtn').textContent = '连接中...';
+                await Online.joinRoom(roomId, passcode);
+                // 更新 URL
+                window.history.replaceState({}, '', window.location.pathname + '?room=' + roomId);
                 document.getElementById('joinForm').style.display = 'none';
+                document.getElementById('joinConfirmBtn').textContent = '进入';
             } else {
                 alert('请输入房间号和邀请码');
             }
@@ -225,13 +217,11 @@
             }
         });
 
-        /* ---------- 模块：URL 已有 room 参数时自动连接 ---------- */
+        /* ---------- 模块：URL 已有 room 参数时自动显示加入表单 ---------- */
         const existingRoom = Online.getRoomId();
         if (existingRoom) {
-            // 隐藏创建/加入按钮，直接显示已连接状态
             document.getElementById('createRoomBtn').style.display = 'none';
             document.getElementById('joinRoomBtn').style.display = 'none';
-            // 不自动连接（需要邀请码验证），显示加入表单
             document.getElementById('joinForm').style.display = 'flex';
             document.getElementById('roomInput').value = existingRoom;
             document.getElementById('passcodeInput').focus();
@@ -255,6 +245,25 @@
                 }
             }
         });
+
+        /* ---------- 模块：监听对方加入 ---------- */
+        Online.onMessage('sys', (data) => {
+            if (data.action === 'user_join') {
+                showFloatTip('💕 TA 来了');
+            }
+        });
+
+        function showFloatTip(text) {
+            const tip = document.createElement('div');
+            tip.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(10,10,40,0.9);color:#fff;padding:8px 20px;border-radius:20px;font-size:0.85rem;z-index:9999;backdrop-filter:blur(10px);border:1px solid rgba(255,107,157,0.4);';
+            tip.textContent = text;
+            document.body.appendChild(tip);
+            setTimeout(() => {
+                tip.style.transition = 'opacity 0.5s';
+                tip.style.opacity = '0';
+                setTimeout(() => tip.remove(), 500);
+            }, 2500);
+        }
     })();
     </script>
 </body>

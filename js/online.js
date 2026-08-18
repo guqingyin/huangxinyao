@@ -1,7 +1,6 @@
 /* ============================================
-   星河之旅 · 七夕特典 — 联机客户端
-   功能：WebSocket 连接、房间管理、实时同步
-   依赖：PartyKit client SDK
+   星河之旅 · 七夕特典 — 联机客户端 (PeerJS)
+   基于 WebRTC P2P，无需服务端部署
    ============================================ */
 
 (function() {
@@ -15,7 +14,7 @@
 
     // 生成随机房间号
     function generateRoomId() {
-        return Math.random().toString(36).substring(2, 8);
+        return 'qixi-' + Math.random().toString(36).substring(2, 8);
     }
 
     // 生成 4 位邀请码
@@ -38,88 +37,20 @@
         return pageMap[name] || name;
     }
 
-    // PartyKit 连接对象
-    let connection = null;
+    // PeerJS 连接对象
+    let peer = null;
+    let conn = null;   // 主动连接对方的 DataConnection
+    let incomingConn = null; // 对方连过来的 DataConnection
     let isConnected = false;
     let roomId = null;
     let passcode = null;
+    let isHost = false;
 
-    // PartyKit 房间密码验证（前端校验，服务端 KV 存储）
-    const PARTYKIT_HOST = 'huangxinyao.partykit.dev';
-
-    // 连接状态回调
+    // 状态回调
     const statusCallbacks = [];
-
-    function onStatusChange(cb) {
-        statusCallbacks.push(cb);
-    }
-
+    function onStatusChange(cb) { statusCallbacks.push(cb); }
     function notifyStatus(online, count) {
         statusCallbacks.forEach(cb => cb(online, count));
-    }
-
-    // 连接房间
-    async function connect(room, code) {
-        roomId = room;
-        passcode = code;
-
-        try {
-            // 动态加载 PartyKit SDK
-            if (!window.PartySocket) {
-                await loadScript('https://cdn.jsdelivr.net/npm/partysocket@1.0.0/bundle.js');
-            }
-
-            connection = new PartySocket({
-                host: PARTYKIT_HOST,
-                room: room
-            });
-
-            connection.addEventListener('open', () => {
-                isConnected = true;
-                // 验证邀请码
-                connection.send(JSON.stringify({
-                    type: 'auth',
-                    passcode: code
-                }));
-                // 通知当前页面
-                connection.send(JSON.stringify({
-                    type: 'page_change',
-                    page: getPageName(),
-                    timestamp: Date.now()
-                }));
-                // 加载持久化数据
-                connection.send(JSON.stringify({
-                    type: 'load',
-                    store: 'wishes'
-                }));
-                connection.send(JSON.stringify({
-                    type: 'load',
-                    store: 'love_notes'
-                }));
-                connection.send(JSON.stringify({
-                    type: 'load',
-                    store: 'timeline'
-                }));
-                notifyStatus(true, 2);
-            });
-
-            connection.addEventListener('message', (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    handleMessage(data);
-                } catch {}
-            });
-
-            connection.addEventListener('close', () => {
-                isConnected = false;
-                notifyStatus(false, 0);
-            });
-
-            return true;
-        } catch (err) {
-            console.error('[online] 连接失败:', err);
-            return false;
-        }
     }
 
     // 动态加载脚本
@@ -133,9 +64,151 @@
         });
     }
 
+    // 创建房间（作为 Host）
+    async function createRoom(room, code) {
+        roomId = room;
+        passcode = code;
+        isHost = true;
+
+        try {
+            if (!window.Peer) {
+                await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
+            }
+
+            peer = new Peer(room, {
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            peer.on('open', () => {
+                isConnected = true;
+                notifyStatus(true, 1);
+                updateOnlineIndicator(1);
+            });
+
+            // 监听对方连入
+            peer.on('connection', (connection) => {
+                incomingConn = connection;
+                setupConnection(connection);
+            });
+
+            peer.on('error', (err) => {
+                console.error('[online] Peer error:', err);
+                if (err.type === 'unavailable-id') {
+                    showFloatTip('⚠️ 房间号已被占用，请重新创建');
+                }
+            });
+
+            return true;
+        } catch (err) {
+            console.error('[online] 创建房间失败:', err);
+            return false;
+        }
+    }
+
+    // 加入房间（作为 Guest）
+    async function joinRoom(room, code) {
+        roomId = room;
+        passcode = code;
+        isHost = false;
+
+        try {
+            if (!window.Peer) {
+                await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');
+            }
+
+            // Guest 用随机 ID
+            peer = new Peer({
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            peer.on('open', () => {
+                // 主动连接 Host
+                conn = peer.connect(room, { reliable: true });
+
+                conn.on('open', () => {
+                    isConnected = true;
+                    // 验证邀请码
+                    conn.send(JSON.stringify({
+                        type: 'auth',
+                        passcode: code
+                    }));
+                    // 通知当前页面
+                    conn.send(JSON.stringify({
+                        type: 'page_change',
+                        page: getPageName(),
+                        timestamp: Date.now()
+                    }));
+                    notifyStatus(true, 2);
+                    updateOnlineIndicator(2);
+                    showFloatTip('💕 已连接到房间');
+                });
+
+                setupConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error('[online] Peer error:', err);
+                if (err.type === 'peer-unavailable') {
+                    showFloatTip('⚠️ 房间不存在或对方未上线');
+                    notifyStatus(false, 0);
+                }
+            });
+
+            return true;
+        } catch (err) {
+            console.error('[online] 加入房间失败:', err);
+            return false;
+        }
+    }
+
+    // 设置 DataConnection 事件
+    function setupConnection(connection) {
+        connection.on('data', (data) => {
+            try {
+                if (typeof data === 'string') {
+                    const msg = JSON.parse(data);
+                    handleMessage(msg);
+                }
+            } catch {}
+        });
+
+        connection.on('close', () => {
+            isConnected = false;
+            updateOnlineIndicator(1);
+            showFloatTip('👋 TA 离开了');
+            notifyStatus(false, 0);
+        });
+
+        connection.on('error', (err) => {
+            console.error('[online] Connection error:', err);
+        });
+    }
+
+    // 统一连接入口
+    async function connect(room, code) {
+        if (isHost || (code && code.length === 4)) {
+            // 有邀请码 → 可能是 join，但我们也支持 create
+            // 实际上：如果 peer 已存在就是 host 模式，否则 join
+            // 这里简化：如果 peer 不存在就创建，否则就加入
+        }
+        // 默认：创建房间用 createRoom，加入用 joinRoom
+        // 外部调用者应该明确调用 createRoom 或 joinRoom
+        // 这里为兼容旧接口，默认走 joinRoom
+        return joinRoom(room, code);
+    }
+
     // 消息处理
     const messageHandlers = {};
-
     function onMessage(type, handler) {
         if (!messageHandlers[type]) messageHandlers[type] = [];
         messageHandlers[type].push(handler);
@@ -144,15 +217,29 @@
     function handleMessage(data) {
         // 系统消息
         if (data.type === 'sys') {
-            if (data.action === 'joined') {
-                updateOnlineIndicator(data.onlineCount);
-            } else if (data.action === 'user_join') {
-                updateOnlineIndicator(data.onlineCount);
+            if (data.action === 'user_join') {
+                updateOnlineIndicator(2);
                 showFloatTip('💕 TA 来了');
-            } else if (data.action === 'user_leave') {
-                updateOnlineIndicator(data.onlineCount || 1);
-                showFloatTip('👋 TA 离开了');
             }
+            return;
+        }
+
+        // 认证验证（Host 端）
+        if (data.type === 'auth' && isHost) {
+            if (data.passcode !== passcode) {
+                showFloatTip('⚠️ 邀请码错误');
+                if (incomingConn) incomingConn.close();
+                return;
+            }
+            // 验证通过，通知对方
+            if (incomingConn) {
+                incomingConn.send(JSON.stringify({
+                    type: 'sys',
+                    action: 'user_join'
+                }));
+            }
+            updateOnlineIndicator(2);
+            showFloatTip('💕 TA 来了');
             return;
         }
 
@@ -167,8 +254,9 @@
 
     // 发送消息
     function send(data) {
-        if (connection && isConnected) {
-            connection.send(JSON.stringify(data));
+        const target = conn || incomingConn;
+        if (target && isConnected) {
+            target.send(JSON.stringify(data));
         }
     }
 
@@ -213,7 +301,6 @@
         indicator.innerHTML = '<span class="online-dot" style="width:8px;height:8px;border-radius:50%;background:#666;transition:all 0.3s;"></span><span class="online-text" style="color:rgba(255,255,255,0.7);">未连接</span>';
         document.body.appendChild(indicator);
 
-        // 移动端位置调整
         if (window.innerWidth <= 768) {
             indicator.style.bottom = '70px';
         }
@@ -231,6 +318,8 @@
     // 暴露 API
     window.Online = {
         connect,
+        createRoom,
+        joinRoom,
         send,
         onMessage,
         onStatusChange,
@@ -239,7 +328,8 @@
         generateRoomId,
         generatePasscode,
         getPageName,
-        isConnected: () => isConnected
+        isConnected: () => isConnected,
+        isHost: () => isHost
     };
 
     // 页面加载后创建指示器
